@@ -102,6 +102,17 @@ extension URL: PropertyListRepresentable {
 
 // MARK: - PropertyListRepresentable for container types
 
+public extension PropertyListRepresentable {
+    func encodeInContainer() -> PropertyListValue? {
+        if let optional = self as? AnyOptional, optional.isNil {
+            return nil
+        }
+        else {
+            return encode()
+        }
+    }
+}
+
 extension Optional: PropertyListRepresentable where Wrapped: PropertyListRepresentable {
     public func encode() -> Wrapped.PropertyListValue? {
         self?.encode()
@@ -119,7 +130,7 @@ extension Optional: PropertyListRepresentable where Wrapped: PropertyListReprese
 
 extension Array: PropertyListRepresentable where Element: PropertyListRepresentable {
     public func encode() -> [Element.PropertyListValue] {
-        map { $0.encode() }
+        compactMap { $0.encodeInContainer() }
     }
 
     public static func decode(_ encodedValue: [Element.PropertyListValue]) throws -> Self {
@@ -134,7 +145,7 @@ extension Array: PropertyListRepresentable where Element: PropertyListRepresenta
 
 extension Dictionary: PropertyListRepresentable where Key == String, Value: PropertyListRepresentable {
     public func encode() -> [Key: Value.PropertyListValue] {
-        mapValues { $0.encode() }
+        compactMapValues { $0.encodeInContainer() }
     }
 
     public static func decode(_ encodedValue: [Key: Value.PropertyListValue]) throws -> Self {
@@ -213,7 +224,8 @@ extension PropertyListDict {
     }
 
     public mutating func set<T: PropertyListRepresentable>(_ value: T, forKey key: String) {
-        self[key] = value.encode()
+        guard let encoded = value.encodeInContainer() else { return }
+        self[key] = encoded
     }
 
     public mutating func set<T: AnyPropertyList>(_ value: T, forKey key: String) {
