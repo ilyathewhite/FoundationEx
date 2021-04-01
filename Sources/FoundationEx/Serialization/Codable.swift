@@ -14,15 +14,19 @@ import Combine
 
 public protocol CodingKeyValue: Decodable {
     static func get<K>(from container: KeyedDecodingContainer<K>, forKey: K) throws -> Self
+    #if canImport(Combine)
     @available(iOS 13, OSX 10.15, *)
     static func get<D: TopLevelDecoder, Input>(using decoder: D, from input: Input) throws -> Self where D.Input == Input
+    #endif
 }
 
 public extension CodingKeyValue {
+    #if canImport(Combine)
     @available(iOS 13, OSX 10.15, *)
     static func get<D: TopLevelDecoder, Input>(using decoder: D, from input: Input) throws -> Self where D.Input == Input {
         return try decoder.decode(Self.self, from: input)
     }
+    #endif
 }
 
 struct ArrayContainer<T: CodingKeyValue>: CodingKeyValue {
@@ -190,11 +194,13 @@ extension Array: CodingKeyValue where Element: CodingKeyValue {
         self = try Self.get(from: decoder.unkeyedContainer())
     }
 
+    #if canImport(Combine)
     @available(iOS 13, OSX 10.15, *)
     public static func get<D: TopLevelDecoder, Input>(using decoder: D, from input: Input) throws -> Self where D.Input == Input {
         let valueContainer = try ArrayContainer<Element>.get(using: decoder, from: input)
         return valueContainer.wrappedValue
     }
+    #endif
 }
 
 extension KeyedDecodingContainer {
