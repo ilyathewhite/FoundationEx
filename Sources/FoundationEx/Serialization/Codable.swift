@@ -8,7 +8,9 @@
 
 import Foundation
 import Tagged
+#if canImport(Combine)
 import Combine
+#endif
 
 public protocol CodingKeyValue: Decodable {
     static func get<K>(from container: KeyedDecodingContainer<K>, forKey: K) throws -> Self
