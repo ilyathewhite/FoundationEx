@@ -15,12 +15,12 @@ let package = Package(
         )
     ],
     dependencies: [
-        .package(name: "Tagged", url: "https://github.com/pointfreeco/swift-tagged.git", from: "0.5.0")
+        .package(url: "https://github.com/pointfreeco/swift-tagged.git", from: "0.5.0")
     ],
     targets: [
         .target(
             name: "FoundationEx",
-            dependencies: ["Tagged"]
+            dependencies: [.product(name: "Tagged", package: "swift-tagged")]
         )
     ]
 )
