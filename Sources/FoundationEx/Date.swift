@@ -16,4 +16,8 @@ public extension Date {
     func isInRange(_ range: (Date, Date)) -> Bool {
         return isInRange(min: range.0, max: range.1)
     }
+
+    static var now: Date {
+        .init()
+    }
 }
