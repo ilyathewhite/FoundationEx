@@ -20,4 +20,8 @@ public extension Date {
     static var now: Date {
         .init()
     }
+
+    var timeIntervalToNow: TimeInterval {
+        Self.now.timeIntervalSince(self)
+    }
 }
