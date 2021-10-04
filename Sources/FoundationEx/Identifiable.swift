@@ -15,3 +15,12 @@ public extension IdentifiableAsSelf {
         self
     }
 }
+
+public struct IdentifiableValue<T>: Identifiable {
+    public let id = UUID()
+    public let value: T
+
+    public init(_ value: T) {
+        self.value = value
+    }
+}

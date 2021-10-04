@@ -12,3 +12,9 @@ public extension Collection {
         indices.contains(index) ? self[index] : nil
     }
 }
+
+public extension Collection {
+    func identifiableValues() -> [IdentifiableValue<Element>] {
+        map { .init($0) }
+    }
+}
