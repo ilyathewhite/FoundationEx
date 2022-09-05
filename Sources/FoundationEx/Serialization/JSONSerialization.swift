@@ -21,3 +21,31 @@ public extension JSONSerialization {
         }
     }
 }
+
+public struct JSONRawValue<T: Codable>: RawRepresentable {
+    public let value: T
+    
+    public init(_ value: T) {
+        self.value = value
+    }
+    
+    public var rawValue: String {
+        guard let data = try? JSONEncoder().encode(value),
+              let string = String(data: data, encoding: .utf8)
+        else {
+            return "{}"
+        }
+        return string
+    }
+    
+    public init?(rawValue: String) {
+        guard let data = rawValue.data(using: .utf8),
+              let result = try? JSONDecoder().decode(T.self, from: data)
+        else {
+            return nil
+        }
+        value = result
+    }
+}
+
+extension JSONRawValue: Equatable where T: Equatable {}
