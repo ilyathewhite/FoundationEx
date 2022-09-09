@@ -20,7 +20,13 @@ let package = Package(
     targets: [
         .target(
             name: "FoundationEx",
-            dependencies: [.product(name: "Tagged", package: "swift-tagged")]
+            dependencies: [.product(name: "Tagged", package: "swift-tagged")],
+            swiftSettings: [.unsafeFlags([
+                "-Xfrontend",
+                "-warn-long-function-bodies=100",
+                "-Xfrontend",
+                "-warn-long-expression-type-checking=100"
+            ])]
         )
     ]
 )
