@@ -1,8 +1,9 @@
 //
 //  DefaultsValue.swift
-//  ChordMate
+//  Rocket Insights
 //
 //  Created by Ilya Belenkiy on 9/14/22.
+//  Copyright © 2022 Rocket Insights. All rights reserved.
 //
 
 import Foundation
