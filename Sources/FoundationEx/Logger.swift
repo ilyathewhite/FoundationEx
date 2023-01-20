@@ -9,7 +9,6 @@
 import Foundation
 import os
 
-@available(iOS 14.0, *)
 extension Logger {
     public func error(message: String, _ error: Error) {
         var dumpStr = ""
