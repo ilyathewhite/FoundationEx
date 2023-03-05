@@ -17,11 +17,7 @@ public extension Date {
         return isInRange(min: range.0, max: range.1)
     }
 
-    static var now: Date {
-        .init()
-    }
-
     var timeIntervalToNow: TimeInterval {
-        Self.now.timeIntervalSince(self)
+        Date().timeIntervalSince(self)
     }
 }
