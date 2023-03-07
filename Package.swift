@@ -27,6 +27,10 @@ let package = Package(
                 "-Xfrontend",
                 "-warn-long-expression-type-checking=100"
             ])]
-        )
+        ),
+        .testTarget(
+            name: "FoundationExTests",
+            dependencies: ["FoundationEx"]
+        ),
     ]
 )
