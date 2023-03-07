@@ -6,7 +6,7 @@
 
 import Foundation
 
-public func codeString<T>(_ value: T) -> String {
+public func codeString<T>(_ value: T, indent: Int = 0, maxWidth: Int = Int.max) -> String {
     if let strValue = value as? String {
         return "\"\(strValue)\""
     }
@@ -83,8 +83,8 @@ public func codeString<T>(_ value: T) -> String {
             res.append("nil")
         }
         
-    case .collection, .set:
-        res.append(displayStyle == .set ? "Set([" : "[")
+    case .collection:
+        res.append("[")
         var isFirst = true
         for (label, value) in mirror.children {
             if !isFirst {
@@ -94,37 +94,74 @@ public func codeString<T>(_ value: T) -> String {
                 isFirst = false
             }
             
-            if let label {
-                res.append(codeString(label))
-                res.append(": ")
-            }
+            assert(label == nil)
             res.append(codeString(value))
         }
-        res.append(displayStyle == .set ? "])" : "]")
+        res.append("]")
         
-    case .dictionary:
-        res.append("[")
+    case .set:
+        var values: [String] = []
+        for (label, value) in mirror.children {
+            assert(label == nil)
+            values.append(codeString(value))
+        }
+        values.sort()
+        
+        res.append("Set([")
         var isFirst = true
-        for (_, value) in mirror.children {
+        for value in values {
             if !isFirst {
                 res.append(", ")
             }
             else {
                 isFirst = false
             }
+
+            res.append(value)
+        }
+        res.append("])")
+
+    case .dictionary:
+        var dict: [String: String] = [:]
+        for (_, value) in mirror.children {
             let valueMirror = Mirror(reflecting: value)
+            var key: String?
+            var value: String?
             for  (index, (_, tupleValue)) in valueMirror.children.enumerated() {
                 if index == 0 {
-                    res.append(codeString(tupleValue))
-                    res.append(": ")
+                    key = codeString(tupleValue)
                 }
                 else if index == 1 {
-                    res.append(codeString(tupleValue))
+                    value = codeString(tupleValue)
                 }
             }
+            guard let key, let value else {
+                assertionFailure()
+                continue
+            }
+            dict[key] = value
         }
-        res.append(displayStyle == .set ? "])" : "]")
+        
+        guard !dict.isEmpty else {
+            return "[:]"
+        }
 
+        res.append("[")
+        var isFirst = true
+        for key in dict.keys.sorted() {
+            if !isFirst {
+                res.append(", ")
+            }
+            else {
+                isFirst = false
+            }
+            guard let value = dict[key] else {
+                assertionFailure()
+                continue
+            }
+            res.append("\(key): \(value)")
+        }
+        res.append("]")
 
     default:
         return String(describing: value)

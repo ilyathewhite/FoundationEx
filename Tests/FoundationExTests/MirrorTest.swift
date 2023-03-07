@@ -52,6 +52,20 @@ class CodeStringTests: XCTestCase {
         
         let value: Simple3 = .init(intValue: 1, doubleValue: 1.23, stringValue: "one")
         XCTAssertEqual(codeString(value), "Simple3(intValue: 1, doubleValue: 1.23, stringValue: \"one\")")
+        
+        
+        struct OnePropertyStruct {
+            let intValue: Int
+        }
+        
+        let value2 = OnePropertyStruct(intValue: 1)
+        XCTAssertEqual(codeString(value2), "OnePropertyStruct(intValue: 1)")
+        
+        struct EmptyStruct {
+        }
+        
+        let value3 = EmptyStruct()
+        XCTAssertEqual(codeString(value3), "EmptyStruct()")
     }
     
     func testClass() {
@@ -69,9 +83,29 @@ class CodeStringTests: XCTestCase {
         
         let value: Simple4 = .init(intValue: 1, doubleValue: 1.23, stringValue: "one")
         XCTAssertEqual(codeString(value), "Simple4(intValue: 1, doubleValue: 1.23, stringValue: \"one\")")
+        
+        struct OnePropertyClass {
+            let intValue: Int
+            
+            init(intValue: Int) {
+                self.intValue = intValue
+            }
+        }
+        
+        let value2 = OnePropertyClass(intValue: 1)
+        XCTAssertEqual(codeString(value2), "OnePropertyClass(intValue: 1)")
+        
+        struct EmptyClass {
+        }
+        
+        let value3 = EmptyClass()
+        XCTAssertEqual(codeString(value3), "EmptyClass()")
     }
     
     func testTuple() {
+        let voidTuple: (Void) = ()
+        XCTAssertEqual(codeString(voidTuple), "()")
+
         let tuple1 = (1, "one")
         XCTAssertEqual(codeString(tuple1), "(1, \"one\")")
         
@@ -94,36 +128,36 @@ class CodeStringTests: XCTestCase {
         let ints = [1, 2, 3]
         XCTAssertEqual(codeString(ints), "[1, 2, 3]")
         
+        let testOneInt: [Int] = [1]
+        XCTAssertEqual(codeString(testOneInt), "[1]")
+
+        let testNoInts: [Int] = []
+        XCTAssertEqual(codeString(testNoInts), "[]")
+        
         let tuples = [(1, 2), (3, 4), (5, 6)]
         XCTAssertEqual(codeString(tuples), "[(1, 2), (3, 4), (5, 6)]")
     }
     
     func testSet() {
-        let intsSet = Set([1, 2])
-        let codeStringVal = codeString(intsSet)
-        if codeStringVal == "Set([2, 1])" {
-            return
-        }
-        else if codeStringVal == "Set([1, 2])" {
-            return
-        }
-        else {
-            XCTFail()
-        }
+        let intsSet = Set([3, 1, 2, 5, 4])
+        XCTAssertEqual(codeString(intsSet), "Set([1, 2, 3, 4, 5])")
+        
+        let oneElemSet = Set([1])
+        XCTAssertEqual(codeString(oneElemSet), "Set([1])")
+
+        let emptySet: Set<Int> = Set([])
+        XCTAssertEqual(codeString(emptySet), "Set([])")
     }
     
     func testDictionary() {
-        let intToString: [Int: String] = [1: "a", 2: "b"]
-        let codeStringVal = codeString(intToString)
-        if codeStringVal == "[1: \"a\", 2: \"b\"]" {
-            return
-        }
-        else if codeStringVal == "[2: \"b\", 1: \"a\"]" {
-            return
-        }
-        else {
-            XCTFail()
-        }
+        let intToString: [Int: String] = [1: "a", 3: "c", 2: "b"]
+        XCTAssertEqual(codeString(intToString), "[1: \"a\", 2: \"b\", 3: \"c\"]")
+        
+        let oneElemDict: [Int: String] = [1: "a"]
+        XCTAssertEqual(codeString(oneElemDict), "[1: \"a\"]")
+        
+        let emptyDict: [Int: String] = [:]
+        XCTAssertEqual(codeString(emptyDict), "[:]")
     }
     
     func testCombined() {
