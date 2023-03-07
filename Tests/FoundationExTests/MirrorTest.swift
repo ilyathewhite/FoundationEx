@@ -51,9 +51,8 @@ class CodeStringTests: XCTestCase {
         }
         
         let value: Simple3 = .init(intValue: 1, doubleValue: 1.23, stringValue: "one")
-        XCTAssertEqual(codeString(value), "Simple3(intValue: 1, doubleValue: 1.23, stringValue: \"one\")")
-        
-        
+        XCTAssertEqual(codeString(value, maxValueWidth: 100), "Simple3(intValue: 1, doubleValue: 1.23, stringValue: \"one\")")
+                
         struct OnePropertyStruct {
             let intValue: Int
         }
@@ -82,7 +81,7 @@ class CodeStringTests: XCTestCase {
         }
         
         let value: Simple4 = .init(intValue: 1, doubleValue: 1.23, stringValue: "one")
-        XCTAssertEqual(codeString(value), "Simple4(intValue: 1, doubleValue: 1.23, stringValue: \"one\")")
+        XCTAssertEqual(codeString(value, maxValueWidth: 100), "Simple4(intValue: 1, doubleValue: 1.23, stringValue: \"one\")")
         
         struct OnePropertyClass {
             let intValue: Int
@@ -177,5 +176,291 @@ class CodeStringTests: XCTestCase {
         
         let value: Compound = .init(a: .one, b: .three(.two("a", int: 1)))
         XCTAssertEqual(codeString(value), "Compound(a: .one, b: .three(.two(\"a\", int: 1)))")
+    }
+    
+    func testLargeNestedTupleInEnum() {
+        enum Nested {
+            case content(a: String, b: String, c: String)
+        }
+        
+        enum Container {
+            case content(String, two: String, three: Nested, four: String, five: String)
+        }
+        
+        let value: Container = .content("one", two: "two", three: .content(a: "one", b: "two", c: "three"), four: "four", five: "five")
+        
+        let strWidth20 = """
+        .content(
+           "one",
+           two: "two",
+           three: .content(
+              a: "one",
+              b: "two",
+              c: "three"
+           ),
+           four: "four",
+           five: "five"
+        )
+        """
+        XCTAssertEqual(codeString(value, maxValueWidth: 20), strWidth20)
+        
+        let strWidth30 = """
+        .content(
+           "one",
+           two: "two",
+           three: .content(
+              a: "one", b: "two", c: "three"
+           ),
+           four: "four",
+           five: "five"
+        )
+        """
+        XCTAssertEqual(codeString(value, maxValueWidth: 30), strWidth30)
+        
+        let strWidth40 = """
+        .content(
+           "one",
+           two: "two",
+           three: .content(a: "one", b: "two", c: "three"),
+           four: "four",
+           five: "five"
+        )
+        """
+        XCTAssertEqual(codeString(value, maxValueWidth: 40), strWidth40)
+    }
+    
+    func testLargeStruct() {
+        struct Large {
+            let one: String
+            let two: String
+            let three: String
+        }
+        
+        let value: Large = .init(one: "one", two: "two", three: "three")
+        
+        let strWidth20 = """
+        Large(
+           one: "one",
+           two: "two",
+           three: "three"
+        )
+        """
+        XCTAssertEqual(codeString(value, maxValueWidth: 20), strWidth20)
+        
+        let strWidth50 = """
+        Large(one: "one", two: "two", three: "three")
+        """
+        XCTAssertEqual(codeString(value, maxValueWidth: 50), strWidth50)
+    }
+    
+    func testLargeTuple() {
+        let value = (one: "one", two: "two", three: "three")
+        
+        let strWidth20 = """
+        (
+           one: "one",
+           two: "two",
+           three: "three"
+        )
+        """
+        XCTAssertEqual(codeString(value, maxValueWidth: 20), strWidth20)
+
+        let strWidth50 = """
+        (one: "one", two: "two", three: "three")
+        """
+        XCTAssertEqual(codeString(value, maxValueWidth: 50), strWidth50)
+    }
+    
+    func testLargeCollection() {
+        let value = ["one", "two", "three", "four", "five"]
+        
+        let strWidth20 = """
+        [
+           "one",
+           "two",
+           "three",
+           "four",
+           "five"
+        ]
+        """
+        XCTAssertEqual(codeString(value, maxValueWidth: 20), strWidth20)
+        
+        let strWidth50 = """
+        ["one", "two", "three", "four", "five"]
+        """
+        XCTAssertEqual(codeString(value, maxValueWidth: 50), strWidth50)
+    }
+    
+    func testLargeSet() {
+        let value = Set(["1 - one", "2 - two", "3 - three", "4 - four", "5 - five"])
+        
+        let strWidth20 = """
+        Set([
+           "1 - one",
+           "2 - two",
+           "3 - three",
+           "4 - four",
+           "5 - five"
+        ])
+        """
+        XCTAssertEqual(codeString(value, maxValueWidth: 20), strWidth20)
+        
+        let strWidth100 = """
+        Set(["1 - one", "2 - two", "3 - three", "4 - four", "5 - five"])
+        """
+        XCTAssertEqual(codeString(value, maxValueWidth: 100), strWidth100)
+    }
+    
+    func testLargeDictionary() {
+        let value = ["1 - one": 1, "2 - two": 2, "3 - three": 3, "4 - four": 4, "5 - five": 5]
+        
+        let strWidth20 = """
+        [
+           "1 - one": 1,
+           "2 - two": 2,
+           "3 - three": 3,
+           "4 - four": 4,
+           "5 - five": 5
+        ]
+        """
+        XCTAssertEqual(codeString(value, maxValueWidth: 20), strWidth20)
+        
+        let strWidth100 = """
+        ["1 - one": 1, "2 - two": 2, "3 - three": 3, "4 - four": 4, "5 - five": 5]
+        """
+        XCTAssertEqual(codeString(value, maxValueWidth: 100), strWidth100)
+    }
+    
+    func testLargeStruct2() {
+        struct Large2 {
+            enum Either<T> {
+                case left(T)
+                case right(T)
+            }
+            
+            enum TupleContainer {
+                case tuple(number: Int, string: String)
+            }
+            
+            struct Simple {
+                let one: String
+                let two: String
+                let three: String
+            }
+            
+            let string: String
+            let tuple: (one: String, Double, two: [Int])
+            let eitherDict: Either<[Int: String]>
+            let eitherSimple: Either<Simple>
+            let tupleContainer: TupleContainer
+        }
+        
+        let value: Large2 = .init(
+            string: "abc",
+            tuple: (
+                one: "Hello", 3.14159, two: [23, 75, 89]
+            ),
+            eitherDict: .left([1: "one", 2: "two", 3: "three"]),
+            eitherSimple: .right(.init(one: "one", two: "two", three: "three")),
+            tupleContainer: .tuple(number: 2, string: "two")
+        )
+        
+        let strWidth20 = """
+        Large2(
+           string: "abc",
+           tuple: (
+              one: "Hello",
+              3.14159,
+              two: [23, 75, 89]
+           ),
+           eitherDict: .left([
+              1: "one",
+              2: "two",
+              3: "three"
+           ]),
+           eitherSimple: .right(
+              Simple(
+                 one: "one",
+                 two: "two",
+                 three: "three"
+              )
+           ),
+           tupleContainer: .tuple(
+              number: 2,
+              string: "two"
+           )
+        )
+        """
+        XCTAssertEqual(codeString(value, maxValueWidth: 20), strWidth20)
+        
+        let strWidth30 = """
+        Large2(
+           string: "abc",
+           tuple: (
+              one: "Hello",
+              3.14159,
+              two: [23, 75, 89]
+           ),
+           eitherDict: .left([
+              1: "one",
+              2: "two",
+              3: "three"
+           ]),
+           eitherSimple: .right(
+              Simple(
+                 one: "one",
+                 two: "two",
+                 three: "three"
+              )
+           ),
+           tupleContainer: .tuple(
+              number: 2, string: "two"
+           )
+        )
+        """
+        XCTAssertEqual(codeString(value, maxValueWidth: 30), strWidth30)
+
+        let strWidth40 = """
+        Large2(
+           string: "abc",
+           tuple: (
+              one: "Hello",
+              3.14159,
+              two: [23, 75, 89]
+           ),
+           eitherDict: .left([1: "one", 2: "two", 3: "three"]),
+           eitherSimple: .right(
+              Simple(
+                 one: "one", two: "two", three: "three"
+              )
+           ),
+           tupleContainer: .tuple(number: 2, string: "two")
+        )
+        """
+        XCTAssertEqual(codeString(value, maxValueWidth: 40), strWidth40)
+
+        let strWidth50 = """
+        Large2(
+           string: "abc",
+           tuple: (one: "Hello", 3.14159, two: [23, 75, 89]),
+           eitherDict: .left([1: "one", 2: "two", 3: "three"]),
+           eitherSimple: .right(
+              Simple(one: "one", two: "two", three: "three")
+           ),
+           tupleContainer: .tuple(number: 2, string: "two")
+        )
+        """
+        XCTAssertEqual(codeString(value, maxValueWidth: 50), strWidth50)
+
+        let strWidth60 = """
+        Large2(
+           string: "abc",
+           tuple: (one: "Hello", 3.14159, two: [23, 75, 89]),
+           eitherDict: .left([1: "one", 2: "two", 3: "three"]),
+           eitherSimple: .right(Simple(one: "one", two: "two", three: "three")),
+           tupleContainer: .tuple(number: 2, string: "two")
+        )
+        """
+        XCTAssertEqual(codeString(value, maxValueWidth: 60), strWidth60)
     }
 }
