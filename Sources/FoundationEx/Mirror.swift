@@ -6,11 +6,58 @@
 
 import Foundation
 
-private func shortName(_ name: String) -> String {
-    name.split(separator: ".").last.map { String($0) } ?? name
+public func propertyCodeStrings<T>(_ value: T,  maxValueWidth: Int = 50) -> [String: String] {
+    let mirror = Mirror(reflecting: value)
+    var res: [String: String] = [:]
+    switch mirror.displayStyle {
+    case .class, .struct:
+        for (propertyName, value) in mirror.children {
+            guard let propertyName else {
+                assertionFailure()
+                continue
+            }
+            res[propertyName] = codeString(value, maxValueWidth: maxValueWidth)
+        }
+        return res
+        
+    default:
+        return [:]
+    }
+}
+
+public func isSimpleLiteral<T>(_ value: T) -> Bool {
+    if value is any ExpressibleByNilLiteral {
+        return false
+    }
+    
+    if value is any ExpressibleByBooleanLiteral {
+        return true
+    }
+    
+    if value is any ExpressibleByIntegerLiteral {
+        return true
+    }
+    
+    if value is any ExpressibleByFloatLiteral {
+        return true
+    }
+    
+    if value is any ExpressibleByStringLiteral {
+        return true
+    }
+    
+    return false
 }
 
 public func codeString<T>(_ value: T, offset: Int = 0, indent: Int = 3, maxValueWidth: Int = 50) -> String {
+    if let strValue = value as? String {
+        return "\"\(strValue)\""
+    }
+
+    if isSimpleLiteral(value) {
+        return String(describing: value)
+    }
+
     func nestedCodeString<U>(_ value: U, offset: Int) -> String {
         codeString(value, offset: offset, indent: indent, maxValueWidth: maxValueWidth)
     }
@@ -18,20 +65,13 @@ public func codeString<T>(_ value: T, offset: Int = 0, indent: Int = 3, maxValue
     func indentString(offset: Int) -> String {
         String(repeating: " ", count: offset)
     }
-        
-    if let strValue = value as? String {
-        return "\"\(strValue)\""
-    }
-
+    
     let singleLine = singleLineCodeString(value)
     if singleLine.count <= maxValueWidth {
         return singleLine
     }
     
     let mirror = Mirror(reflecting: value)
-    guard let displayStyle = mirror.displayStyle else {
-        return String(describing: value)
-    }
     var res = ""
     
     func addNestedContent(_ nestedContent: String) -> Bool {
@@ -42,7 +82,7 @@ public func codeString<T>(_ value: T, offset: Int = 0, indent: Int = 3, maxValue
         return true
     }
     
-    switch displayStyle {
+    switch mirror.displayStyle {
     case .enum:
         if let (caseLabel, caseValue) = mirror.children.first {
             guard let caseLabel else {
@@ -114,64 +154,7 @@ public func codeString<T>(_ value: T, offset: Int = 0, indent: Int = 3, maxValue
             res = ".\(value)"
         }
 
-    case .struct, .class:
-        let name = "\(mirror.subjectType)"
-        let shortName = shortName(name)
-        res.append(shortName)
-        res.append("(\n")
-        let nestedOffset = offset + indent
-        var didAddAsOneLine: Bool
-        do {
-            var nestedContent = ""
-            var isFirst = true
-            for (propertyName, value) in mirror.children {
-                guard let propertyName else {
-                    assertionFailure()
-                    continue
-                }
-                if !isFirst {
-                    nestedContent.append(", ")
-                }
-                else {
-                    isFirst = false
-                }
-                nestedContent.append(propertyName)
-                nestedContent.append(": ")
-                nestedContent.append(singleLineCodeString(value))
-                
-                if nestedContent.count > maxValueWidth {
-                    break
-                }
-            }
-            didAddAsOneLine = addNestedContent(nestedContent)
-        }
-        
-        if !didAddAsOneLine {
-            let nestedOffsetStr = indentString(offset: nestedOffset)
-            var isFirst = true
-            for (propertyName, value) in mirror.children {
-                guard let propertyName else {
-                    assertionFailure()
-                    return res
-                }
-                if !isFirst {
-                    res.append(",\n")
-                }
-                else {
-                    isFirst = false
-                }
-                
-                res.append(nestedOffsetStr)
-                res.append(propertyName)
-                res.append(": ")
-                res.append(nestedCodeString(value, offset: nestedOffset))
-            }
-            res.append("\n")
-        }
-        res.append(indentString(offset: offset))
-        res.append(")")
-        
-    case .tuple:
+   case .tuple:
         res.append("(\n")
         let nestedOffset = offset + indent
         let nestedOffsetStr = indentString(offset: nestedOffset)
@@ -304,9 +287,63 @@ public func codeString<T>(_ value: T, offset: Int = 0, indent: Int = 3, maxValue
         res.append(indentString(offset: offset))
         res.append("]")
 
-    default:
-        return String(describing: value)
-    }
+    default: // struct, class, and unknown
+        let name = "\(mirror.subjectType)"
+        let shortName = shortName(name)
+        res.append(shortName)
+        res.append("(\n")
+        let nestedOffset = offset + indent
+        var didAddAsOneLine: Bool
+        do {
+            var nestedContent = ""
+            var isFirst = true
+            for (propertyName, value) in mirror.children {
+                guard let propertyName else {
+                    assertionFailure()
+                    continue
+                }
+                if !isFirst {
+                    nestedContent.append(", ")
+                }
+                else {
+                    isFirst = false
+                }
+                nestedContent.append(propertyName)
+                nestedContent.append(": ")
+                nestedContent.append(singleLineCodeString(value))
+                
+                if nestedContent.count > maxValueWidth {
+                    break
+                }
+            }
+            didAddAsOneLine = addNestedContent(nestedContent)
+        }
+        
+        if !didAddAsOneLine {
+            let nestedOffsetStr = indentString(offset: nestedOffset)
+            var isFirst = true
+            for (propertyName, value) in mirror.children {
+                guard let propertyName else {
+                    assertionFailure()
+                    return res
+                }
+                if !isFirst {
+                    res.append(",\n")
+                }
+                else {
+                    isFirst = false
+                }
+                
+                res.append(nestedOffsetStr)
+                res.append(propertyName)
+                res.append(": ")
+                res.append(nestedCodeString(value, offset: nestedOffset))
+            }
+            res.append("\n")
+        }
+        res.append(indentString(offset: offset))
+        res.append(")")
+     }
     return res
 
 }
@@ -316,12 +353,13 @@ private func singleLineCodeString<T>(_ value: T) -> String {
         return "\"\(strValue)\""
     }
 
-    let mirror = Mirror.init(reflecting: value)
-    guard let displayStyle = mirror.displayStyle else {
+    if isSimpleLiteral(value) {
         return String(describing: value)
     }
+
+    let mirror = Mirror.init(reflecting: value)
     var res = ""
-    switch displayStyle {
+    switch mirror.displayStyle {
     case .enum:
         if let (caseLabel, caseValue) = mirror.children.first {
             guard let caseLabel else {
@@ -338,29 +376,6 @@ private func singleLineCodeString<T>(_ value: T) -> String {
             res = ".\(value)"
         }
 
-    case .struct, .class:
-        let name = "\(mirror.subjectType)"
-        let shortName = shortName(name)
-        res.append(shortName)
-        res.append("(")
-        var isFirst = true
-        for (propertyName, value) in mirror.children {
-            guard let propertyName else {
-                assertionFailure()
-                return res
-            }
-            if !isFirst {
-                res.append(", ")
-            }
-            else {
-                isFirst = false
-            }
-            res.append(propertyName)
-            res.append(": ")
-            res.append(singleLineCodeString(value))
-        }
-        res.append(")")
-        
     case .tuple:
         res.append("(")
         var isFirst = true
@@ -468,9 +483,32 @@ private func singleLineCodeString<T>(_ value: T) -> String {
         }
         res.append("]")
 
-    default:
-        return String(describing: value)
+    default: // struct, class, and unknown
+        let name = "\(mirror.subjectType)"
+        let shortName = shortName(name)
+        res.append(shortName)
+        res.append("(")
+        var isFirst = true
+        for (propertyName, value) in mirror.children {
+            guard let propertyName else {
+                assertionFailure()
+                return res
+            }
+            if !isFirst {
+                res.append(", ")
+            }
+            else {
+                isFirst = false
+            }
+            res.append(propertyName)
+            res.append(": ")
+            res.append(singleLineCodeString(value))
+        }
+        res.append(")")
     }
     return res
 }
 
+private func shortName(_ name: String) -> String {
+    name.split(separator: ".").last.map { String($0) } ?? name
+}

@@ -463,4 +463,16 @@ class CodeStringTests: XCTestCase {
         """
         XCTAssertEqual(codeString(value, maxValueWidth: 60), strWidth60)
     }
+    
+    func testPropertyCodeStrings() {
+        struct Simple {
+            let intValue: Int
+            let doubleValue: Double
+            let stringValue: String
+        }
+        
+        let value: Simple = .init(intValue: 1, doubleValue: 3.14, stringValue: "abc")
+        let dict = propertyCodeStrings(value)
+        XCTAssertEqual(dict, ["stringValue": "\"abc\"", "intValue": "1", "doubleValue": "3.14"])
+    }
 }
