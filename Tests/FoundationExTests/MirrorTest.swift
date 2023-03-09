@@ -472,7 +472,12 @@ class CodeStringTests: XCTestCase {
         }
         
         let value: Simple = .init(intValue: 1, doubleValue: 3.14, stringValue: "abc")
-        let dict = propertyCodeStrings(value)
-        XCTAssertEqual(dict, ["stringValue": "\"abc\"", "intValue": "1", "doubleValue": "3.14"])
+        let content = propertyCodeStrings(value)
+        let expected: [CodePropertyValuePair] = [
+            .init(property: "intValue", value: "1"),
+            .init(property: "doubleValue", value: "3.14"),
+            .init(property: "stringValue", value: "abc")
+         ]
+        XCTAssertEqual(content, expected)
     }
 }

@@ -6,9 +6,23 @@
 
 import Foundation
 
-public func propertyCodeStrings<T>(_ value: T,  maxValueWidth: Int = 50) -> [String: String] {
+public struct CodePropertyValuePair: Equatable, Codable, Identifiable {
+    let property: String
+    let value: String
+    
+    public var id: String {
+        property
+    }
+    
+    public init(property: String, value: String) {
+        self.property = property
+        self.value = value
+    }
+}
+
+public func propertyCodeStrings<T>(_ value: T,  maxValueWidth: Int = 50) -> [CodePropertyValuePair] {
     let mirror = Mirror(reflecting: value)
-    var res: [String: String] = [:]
+    var res: [CodePropertyValuePair] = []
     switch mirror.displayStyle {
     case .class, .struct:
         for (propertyName, value) in mirror.children {
@@ -16,12 +30,13 @@ public func propertyCodeStrings<T>(_ value: T,  maxValueWidth: Int = 50) -> [Str
                 assertionFailure()
                 continue
             }
-            res[propertyName] = codeString(value, maxValueWidth: maxValueWidth)
+            let strValue = (value as? String) ?? codeString(value, maxValueWidth: maxValueWidth)
+            res.append(.init(property: propertyName, value: strValue))
         }
         return res
         
     default:
-        return [:]
+        return []
     }
 }
 
