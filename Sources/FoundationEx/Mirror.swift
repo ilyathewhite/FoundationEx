@@ -6,9 +6,11 @@
 
 import Foundation
 
+public let codeStringDefaultMaxWidth = 50
+
 public struct CodePropertyValuePair: Equatable, Codable, Identifiable {
-    let property: String
-    let value: String
+    public let property: String
+    public let value: String
     
     public var id: String {
         property
@@ -20,7 +22,7 @@ public struct CodePropertyValuePair: Equatable, Codable, Identifiable {
     }
 }
 
-public func propertyCodeStrings<T>(_ value: T,  maxValueWidth: Int = 50) -> [CodePropertyValuePair] {
+public func propertyCodeStrings<T>(_ value: T,  maxValueWidth: Int = codeStringDefaultMaxWidth) -> [CodePropertyValuePair] {
     let mirror = Mirror(reflecting: value)
     var res: [CodePropertyValuePair] = []
     switch mirror.displayStyle {
@@ -64,7 +66,7 @@ public func isSimpleLiteral<T>(_ value: T) -> Bool {
     return false
 }
 
-public func codeString<T>(_ value: T, offset: Int = 0, indent: Int = 3, maxValueWidth: Int = 50) -> String {
+public func codeString<T>(_ value: T, offset: Int = 0, indent: Int = 3, maxValueWidth: Int = codeStringDefaultMaxWidth) -> String {
     if let strValue = value as? String {
         return "\"\(strValue)\""
     }
