@@ -41,6 +41,33 @@ class CodeStringTests: XCTestCase {
         XCTAssertEqual(codeString(strWithSingleQuote), "\"ab\\\'c\"")
     }
     
+    
+    func testLiterals2() {
+        enum Finger: Int, CustomStringConvertible {
+            case index = 0
+            case middle = 1
+            case ring = 2
+            case none = -1
+
+            public var description: String { symbol }
+
+            public var symbol: String {
+                switch self {
+                case .index: return "1"
+                case .middle: return "2"
+                case .ring: return "3"
+                case .none: return " "
+                }
+            }
+        }
+        
+        let finger1: Finger = .none
+        XCTAssertEqual(codeString(finger1), "\" \"")
+
+        let finger2: Finger = .index
+        XCTAssertEqual(codeString(finger2), "\"1\"")
+    }
+    
     func testSimpleEnum() {
         enum Simple {
             case one

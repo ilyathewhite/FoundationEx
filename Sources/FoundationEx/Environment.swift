@@ -11,6 +11,7 @@ import Foundation
 public enum FoundationEx {
     public struct Environment {
         public var logGeneralError: (Error) -> Void
+        public var logErrorMessage: (String) -> Void
         public var logCodingError: (Error) -> Void
         public var userDefaults: UserDefaults
         public var ignoreArrayContentCodingErrors = false
@@ -24,6 +25,7 @@ public enum FoundationEx {
 
     public static var env = Environment(
         logGeneralError: logError(_:),
+        logErrorMessage: { NSLog($0) },
         logCodingError: logError(_:),
         userDefaults: UserDefaults.standard
     )
