@@ -66,7 +66,17 @@ public func isSimpleLiteral<T>(_ value: T) -> Bool {
     return false
 }
 
+public func singleLineCodeString<T>(_ value: T, indent: Int = 3, maxValueWidth: Int = codeStringDefaultMaxWidth) -> String {
+    codeStringImpl(value, delimiter: " ", offset: 0, indent: indent, maxValueWidth: maxValueWidth)
+}
+
 public func codeString<T>(_ value: T, offset: Int = 0, indent: Int = 3, maxValueWidth: Int = codeStringDefaultMaxWidth) -> String {
+    codeStringImpl(value, delimiter: "\n", offset: offset, indent: indent, maxValueWidth: maxValueWidth)
+}
+
+private func codeStringImpl<T>(_ value: T, delimiter: Character, offset: Int, indent: Int, maxValueWidth: Int) -> String {
+    let forceSingleLine = (delimiter == " ")
+    
     if let strValue = value as? String {
         return "\"\(strValue)\""
     }
@@ -76,26 +86,31 @@ public func codeString<T>(_ value: T, offset: Int = 0, indent: Int = 3, maxValue
     }
 
     func nestedCodeString<U>(_ value: U, offset: Int) -> String {
-        codeString(value, offset: offset, indent: indent, maxValueWidth: maxValueWidth)
+        codeStringImpl(value, delimiter: delimiter, offset: offset, indent: indent, maxValueWidth: maxValueWidth)
     }
     
     func indentString(offset: Int) -> String {
-        String(repeating: " ", count: offset)
+        guard !forceSingleLine else { return "" }
+        return String(repeating: " ", count: offset)
     }
     
-    let singleLine = singleLineCodeString(value)
-    if singleLine.count <= maxValueWidth {
-        return singleLine
+    if !forceSingleLine {
+        let singleLine = singleLineCodeString(value)
+        if (singleLine.count <= maxValueWidth) || forceSingleLine {
+            return singleLine
+        }
     }
     
     let mirror = Mirror(reflecting: value)
     var res = ""
     
     func addNestedContent(_ nestedContent: String) -> Bool {
-        guard nestedContent.count <= maxValueWidth else { return false }
+        guard (nestedContent.count <= maxValueWidth) || forceSingleLine else { return false }
         res.append(indentString(offset: offset + indent))
         res.append(nestedContent)
-        res.append("\n")
+        if !forceSingleLine {
+            res.append("\n")
+        }
         return true
     }
     
@@ -112,7 +127,7 @@ public func codeString<T>(_ value: T, offset: Int = 0, indent: Int = 3, maxValue
             }
             let savedRes = res
             res.append(".\(caseLabel)(\(caseValueStr))")
-            if res.count > maxValueWidth {
+            if (res.count > maxValueWidth) && !forceSingleLine {
                 res = savedRes
                 let nestedOffset = offset + indent
                 if caseValueStr.count <= maxValueWidth {
@@ -172,13 +187,16 @@ public func codeString<T>(_ value: T, offset: Int = 0, indent: Int = 3, maxValue
         }
 
    case .tuple:
-        res.append("(\n")
+        res.append("(")
+        if !forceSingleLine {
+            res.append("\n")
+        }
         let nestedOffset = offset + indent
         let nestedOffsetStr = indentString(offset: nestedOffset)
         var isFirst = true
         for (label, value) in mirror.children {
             if !isFirst {
-                res.append(",\n")
+                res.append(",\(delimiter)")
             }
             else {
                 isFirst = false
@@ -191,8 +209,10 @@ public func codeString<T>(_ value: T, offset: Int = 0, indent: Int = 3, maxValue
             }
             res.append(nestedCodeString(value, offset: nestedOffset))
         }
-        res.append("\n")
-        res.append(indentString(offset: offset))
+        if !forceSingleLine {
+            res.append("\n")
+            res.append(indentString(offset: offset))
+        }
         res.append(")")
         
     case .optional:
@@ -204,13 +224,16 @@ public func codeString<T>(_ value: T, offset: Int = 0, indent: Int = 3, maxValue
         }
         
     case .collection:
-        res.append("[\n")
+        res.append("[")
+        if !forceSingleLine {
+            res.append("\n")
+        }
         let nestedOffset = offset + indent
         let nestedOffsetStr = indentString(offset: nestedOffset)
         var isFirst = true
         for (label, value) in mirror.children {
             if !isFirst {
-                res.append(",\n")
+                res.append(",\(delimiter)")
             }
             else {
                 isFirst = false
@@ -220,8 +243,10 @@ public func codeString<T>(_ value: T, offset: Int = 0, indent: Int = 3, maxValue
             res.append(nestedOffsetStr)
             res.append(nestedCodeString(value, offset: nestedOffset))
         }
-        res.append("\n")
-        res.append(indentString(offset: offset))
+        if !forceSingleLine {
+            res.append("\n")
+            res.append(indentString(offset: offset))
+        }
         res.append("]")
 
     case .set:
@@ -231,7 +256,10 @@ public func codeString<T>(_ value: T, offset: Int = 0, indent: Int = 3, maxValue
             valuesDict[singleLineCodeString(value)] = value
         }
         
-        res.append("Set([\n")
+        res.append("Set([")
+        if !forceSingleLine {
+            res.append("\n")
+        }
         let nestedOffset = offset + indent
         let nestedOffsetStr = indentString(offset: nestedOffset)
         var isFirst = true
@@ -242,7 +270,7 @@ public func codeString<T>(_ value: T, offset: Int = 0, indent: Int = 3, maxValue
             }
             
             if !isFirst {
-                res.append(",\n")
+                res.append(",\(delimiter)")
             }
             else {
                 isFirst = false
@@ -251,8 +279,10 @@ public func codeString<T>(_ value: T, offset: Int = 0, indent: Int = 3, maxValue
             res.append(nestedOffsetStr)
             res.append(nestedCodeString(value, offset: nestedOffset))
         }
-        res.append("\n")
-        res.append(indentString(offset: offset))
+        if !forceSingleLine {
+            res.append("\n")
+            res.append(indentString(offset: offset))
+        }
         res.append("])")
 
     case .dictionary:
@@ -280,7 +310,10 @@ public func codeString<T>(_ value: T, offset: Int = 0, indent: Int = 3, maxValue
             return "[:]"
         }
 
-        res.append("[\n")
+        res.append("[")
+        if !forceSingleLine {
+            res.append("\n")
+        }
         let nestedOffset = offset + indent
         let nestedOffsetStr = indentString(offset: nestedOffset)
         var isFirst = true
@@ -291,7 +324,7 @@ public func codeString<T>(_ value: T, offset: Int = 0, indent: Int = 3, maxValue
             }
 
             if !isFirst {
-                res.append(",\n")
+                res.append(",\(delimiter)")
             }
             else {
                 isFirst = false
@@ -300,15 +333,20 @@ public func codeString<T>(_ value: T, offset: Int = 0, indent: Int = 3, maxValue
             res.append("\(key): ")
             res.append(nestedCodeString(value, offset: nestedOffset))
         }
-        res.append("\n")
-        res.append(indentString(offset: offset))
+        if !forceSingleLine {
+            res.append("\n")
+            res.append(indentString(offset: offset))
+        }
         res.append("]")
 
     default: // struct, class, and unknown
         let name = "\(mirror.subjectType)"
         let shortName = shortName(name)
         res.append(shortName)
-        res.append("(\n")
+        res.append("(")
+        if !forceSingleLine {
+            res.append("\n")
+        }
         let nestedOffset = offset + indent
         var didAddAsOneLine: Bool
         do {
@@ -361,168 +399,6 @@ public func codeString<T>(_ value: T, offset: Int = 0, indent: Int = 3, maxValue
         res.append(indentString(offset: offset))
         res.append(")")
      }
-    return res
-
-}
-
-private func singleLineCodeString<T>(_ value: T) -> String {
-    if let strValue = value as? String {
-        return "\"\(strValue)\""
-    }
-
-    if isSimpleLiteral(value) {
-        return String(describing: value)
-    }
-
-    let mirror = Mirror.init(reflecting: value)
-    var res = ""
-    switch mirror.displayStyle {
-    case .enum:
-        if let (caseLabel, caseValue) = mirror.children.first {
-            guard let caseLabel else {
-                assertionFailure()
-                return res
-            }
-            var caseValueStr = singleLineCodeString(caseValue)
-            if Mirror(reflecting: caseValue).displayStyle == .tuple {
-                caseValueStr = String(caseValueStr.dropFirst().dropLast()) // remove the extra ()
-            }
-            res.append(".\(caseLabel)(\(caseValueStr))")
-        }
-        else {
-            res = ".\(value)"
-        }
-
-    case .tuple:
-        res.append("(")
-        var isFirst = true
-        for (label, value) in mirror.children {
-            if !isFirst {
-                res.append(", ")
-            }
-            else {
-                isFirst = false
-            }
-            
-            if let label, !label.starts(with: ".") {
-                res.append(label)
-                res.append(": ")
-            }
-            res.append(singleLineCodeString(value))
-        }
-        res.append(")")
-        
-    case .optional:
-        if let (_, value) = mirror.children.first {
-            res.append(singleLineCodeString(value))
-        }
-        else {
-            res.append("nil")
-        }
-        
-    case .collection:
-        res.append("[")
-        var isFirst = true
-        for (label, value) in mirror.children {
-            if !isFirst {
-                res.append(", ")
-            }
-            else {
-                isFirst = false
-            }
-            
-            assert(label == nil)
-            res.append(singleLineCodeString(value))
-        }
-        res.append("]")
-        
-    case .set:
-        var values: [String] = []
-        for (label, value) in mirror.children {
-            assert(label == nil)
-            values.append(singleLineCodeString(value))
-        }
-        values.sort()
-        
-        res.append("Set([")
-        var isFirst = true
-        for value in values {
-            if !isFirst {
-                res.append(", ")
-            }
-            else {
-                isFirst = false
-            }
-
-            res.append(value)
-        }
-        res.append("])")
-
-    case .dictionary:
-        var dict: [String: String] = [:]
-        for (_, value) in mirror.children {
-            let valueMirror = Mirror(reflecting: value)
-            var key: String?
-            var value: String?
-            for  (index, (_, tupleValue)) in valueMirror.children.enumerated() {
-                if index == 0 {
-                    key = singleLineCodeString(tupleValue)
-                }
-                else if index == 1 {
-                    value = singleLineCodeString(tupleValue)
-                }
-            }
-            guard let key, let value else {
-                assertionFailure()
-                continue
-            }
-            dict[key] = value
-        }
-        
-        guard !dict.isEmpty else {
-            return "[:]"
-        }
-
-        res.append("[")
-        var isFirst = true
-        for key in dict.keys.sorted() {
-            if !isFirst {
-                res.append(", ")
-            }
-            else {
-                isFirst = false
-            }
-            guard let value = dict[key] else {
-                assertionFailure()
-                continue
-            }
-            res.append("\(key): \(value)")
-        }
-        res.append("]")
-
-    default: // struct, class, and unknown
-        let name = "\(mirror.subjectType)"
-        let shortName = shortName(name)
-        res.append(shortName)
-        res.append("(")
-        var isFirst = true
-        for (propertyName, value) in mirror.children {
-            guard let propertyName else {
-                assertionFailure()
-                return res
-            }
-            if !isFirst {
-                res.append(", ")
-            }
-            else {
-                isFirst = false
-            }
-            res.append(propertyName)
-            res.append(": ")
-            res.append(singleLineCodeString(value))
-        }
-        res.append(")")
-    }
     return res
 }
 
