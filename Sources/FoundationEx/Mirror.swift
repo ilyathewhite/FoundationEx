@@ -42,30 +42,6 @@ public func propertyCodeStrings<T>(_ value: T,  maxValueWidth: Int = codeStringD
     }
 }
 
-public func isSimpleLiteral<T>(_ value: T) -> Bool {
-    if value is any ExpressibleByNilLiteral {
-        return false
-    }
-    
-    if value is any ExpressibleByBooleanLiteral {
-        return true
-    }
-    
-    if value is any ExpressibleByIntegerLiteral {
-        return true
-    }
-    
-    if value is any ExpressibleByFloatLiteral {
-        return true
-    }
-    
-    if value is any ExpressibleByStringLiteral {
-        return true
-    }
-    
-    return false
-}
-
 public func singleLineCodeString<T>(_ value: T, indent: Int = 3, maxValueWidth: Int = codeStringDefaultMaxWidth) -> String {
     codeStringImpl(value, delimiter: " ", offset: 0, indent: indent, maxValueWidth: maxValueWidth)
 }
@@ -76,15 +52,63 @@ public func codeString<T>(_ value: T, offset: Int = 0, indent: Int = 3, maxValue
 
 private func codeStringImpl<T>(_ value: T, delimiter: Character, offset: Int, indent: Int, maxValueWidth: Int) -> String {
     let forceSingleLine = (delimiter == " ")
+    let mirror = Mirror(reflecting: value)
+
+    if mirror.displayStyle != .optional {
+        if value is any ExpressibleByBooleanLiteral {
+            return String(describing: value)
+        }
+        
+        if value is any ExpressibleByIntegerLiteral {
+            return String(describing: value)
+        }
+        
+        if value is any ExpressibleByFloatLiteral {
+            return String(describing: value)
+        }
+        
+        if value is any ExpressibleByStringLiteral {
+            let str = String(describing: value)
+            var res = ""
+            res.append("\"")
+            for char in str {
+                if char == "\0" {
+                    res.append("\\")
+                    res.append("0")
+                }
+                else if char == "\\" {
+                    res.append("\\")
+                    res.append("\\")
+                }
+                else if char == "\t" {
+                    res.append("\\")
+                    res.append("t")
+                }
+                else if char == "\n" {
+                    res.append("\\")
+                    res.append("n")
+                }
+                else if char == "\r" {
+                    res.append("\\")
+                    res.append("r")
+                }
+                else if char == "\"" {
+                    res.append("\\")
+                    res.append("\"")
+                }
+                else if char == "\'" {
+                    res.append("\\")
+                    res.append("'")
+                }
+                else {
+                    res.append(char)
+                }
+            }
+            res.append("\"")
+            return res
+        }
+    }
     
-    if let strValue = value as? String {
-        return "\"\(strValue)\""
-    }
-
-    if isSimpleLiteral(value) {
-        return String(describing: value)
-    }
-
     func nestedCodeString<U>(_ value: U, offset: Int) -> String {
         codeStringImpl(value, delimiter: delimiter, offset: offset, indent: indent, maxValueWidth: maxValueWidth)
     }
@@ -101,7 +125,6 @@ private func codeStringImpl<T>(_ value: T, delimiter: Character, offset: Int, in
         }
     }
     
-    let mirror = Mirror(reflecting: value)
     var res = ""
     
     func addNestedContent(_ nestedContent: String) -> Bool {

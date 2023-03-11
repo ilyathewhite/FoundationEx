@@ -9,6 +9,38 @@ import XCTest
 import FoundationEx
 
 class CodeStringTests: XCTestCase {
+    func testLiterals() {
+        XCTAssertEqual(codeString(123), "123")
+        XCTAssertEqual(codeString("123"), "\"123\"")
+        
+        let intNil: Int? = nil
+        XCTAssertEqual(codeString(intNil), "nil")
+
+        let strNil: String? = nil
+        XCTAssertEqual(codeString(strNil), "nil")
+        
+        let strWithZero = "ab\0c"
+        XCTAssertEqual(codeString(strWithZero), "\"ab\\0c\"")
+        
+        let strWithSlash = "ab\\c"
+        XCTAssertEqual(codeString(strWithSlash), "\"ab\\\\c\"")
+        
+        let strWithTab = "ab\tc"
+        XCTAssertEqual(codeString(strWithTab), "\"ab\\tc\"")
+
+        let strWithNewLine = "ab\nc"
+        XCTAssertEqual(codeString(strWithNewLine), "\"ab\\nc\"")
+        
+        let strWithCarriageReturn = "ab\rc"
+        XCTAssertEqual(codeString(strWithCarriageReturn), "\"ab\\rc\"")
+
+        let strWithQuote = "ab\"c"
+        XCTAssertEqual(codeString(strWithQuote), "\"ab\\\"c\"")
+
+        let strWithSingleQuote = "ab\'c"
+        XCTAssertEqual(codeString(strWithSingleQuote), "\"ab\\\'c\"")
+    }
+    
     func testSimpleEnum() {
         enum Simple {
             case one
