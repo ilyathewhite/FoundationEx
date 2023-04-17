@@ -9,10 +9,6 @@
 import Foundation
 
 public extension TimeInterval {
-    static func seconds(_ value: Int) -> TimeInterval {
-        Double(value)
-    }
-
     static func minutes(_ value: Int) -> TimeInterval {
         60.0 * Double(value)
     }
