@@ -208,9 +208,7 @@ private func codeStringImpl<T>(_ value: T, delimiter: Character, offset: Int, in
         else if value is CustomStringConvertible {
             res = codeString(String(describing: value))
             if !(value is any ExpressibleByStringLiteral) {
-                FoundationEx.env.logErrorMessage(
-                    "codeString(): type \(mirror.subjectType) should implement ExpressibleByStringLiteral."
-                )
+                print("codeString(): type \(mirror.subjectType) should implement ExpressibleByStringLiteral.")
             }
         }
         else {

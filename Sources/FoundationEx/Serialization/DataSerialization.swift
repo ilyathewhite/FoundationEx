@@ -7,27 +7,7 @@
 //
 
 import Foundation
-
-public protocol RawValueRepresentable {
-    associatedtype RawValue
-    init?(rawValue: RawValue)
-    var rawValue: RawValue { get }
-}
-
-public enum PropertyListError<T>: Error {
-    case missingProperty(key: String)
-    case invalidType(expected: T.Type, key: String, value: Any)
-    case invalidValue(key: String, value: Any, error: Error?)
-    case decode(Error)
-}
-
-public typealias PropertyListDict = [String: Any]
-public typealias PropertyListArray = [Any]
-
-public protocol AnyPropertyList {}
-extension PropertyListDict: AnyPropertyList {}
-extension PropertyListArray: AnyPropertyList {}
-extension Optional: AnyPropertyList where Wrapped: AnyPropertyList {}
+import Tagged
 
 // MARK: - PropertyListRepresentable
 
@@ -35,6 +15,12 @@ public protocol PropertyListRepresentable {
     associatedtype PropertyListValue
     func encode() -> PropertyListValue
     static func decode(_: PropertyListValue) throws -> Self
+}
+
+public enum PropertyListError<T>: Error {
+    case invalidType(expected: T.Type, key: String, value: Any)
+    case invalidValue(value: Any, error: Error?)
+    case decode(Error)
 }
 
 // MARK: - PropertyListRepresentable as self
@@ -58,29 +44,6 @@ extension Double: PropertyListRepresentableAsSelf {}
 extension Bool: PropertyListRepresentableAsSelf {}
 extension Date: PropertyListRepresentableAsSelf {}
 
-// MARK: - PropertyListRepresentable as RawValue
-
-public protocol PropertyListRepresentableAsRawValue: RawValueRepresentable, PropertyListRepresentable
-where RawValue: PropertyListRepresentable, PropertyListValue == RawValue {
-}
-
-extension PropertyListRepresentableAsRawValue {
-    public func encode() -> RawValue {
-        rawValue
-    }
-
-    public static func decode(_ rawValue: RawValue) throws -> Self {
-        if let value = Self(rawValue: rawValue) {
-            return value
-        }
-        else {
-            throw PropertyListError<Self>.decode(
-                PropertyListError<Self>.invalidValue(key: "rawValue", value: rawValue, error: nil)
-            )
-        }
-    }
-}
-
 // MARK: - PropertyListRepresentable for basic types that require some conversion
 
 extension URL: PropertyListRepresentable {
@@ -94,141 +57,46 @@ extension URL: PropertyListRepresentable {
         }
         else {
             throw PropertyListError<Self>.decode(
-                PropertyListError<Self>.invalidValue(key: "", value: plistValue, error: nil)
+                PropertyListError<Self>.invalidValue(value: plistValue, error: nil)
             )
         }
     }
 }
 
-// MARK: - PropertyListRepresentable for container types
-
-public extension PropertyListRepresentable {
-    func encodeInContainer() -> PropertyListValue? {
-        if let optional = self as? AnyOptional, optional.isNil {
-            return nil
-        }
-        else {
-            return encode()
-        }
+extension Tagged: PropertyListRepresentable where RawValue: PropertyListRepresentable {
+    public func encode() -> RawValue.PropertyListValue {
+        rawValue.encode()
+    }
+    public static func decode(_ encodedValue: RawValue.PropertyListValue) throws -> Self {
+        try .init(RawValue.decode(encodedValue))
     }
 }
 
-extension Optional: PropertyListRepresentable where Wrapped: PropertyListRepresentable {
-    public func encode() -> Wrapped.PropertyListValue? {
-        self?.encode()
+
+extension JSONRawValue: PropertyListRepresentable {
+    public func encode() -> String {
+        rawValue
     }
 
-    public static func decode(_ encoded: Wrapped.PropertyListValue?) throws -> Self {
-        do {
-            return try encoded.map(Wrapped.decode)
+    public static func decode(_ encodedValue: String) throws -> Self {
+        guard let data = encodedValue.data(using: .utf8) else {
+            throw PropertyListError<Value>.invalidValue(value: encodedValue, error: nil)
         }
-        catch {
-            throw PropertyListError<Self>.decode(error)
-        }
-    }
-}
-
-extension Array: PropertyListRepresentable where Element: PropertyListRepresentable {
-    public func encode() -> [Element.PropertyListValue] {
-        compactMap { $0.encodeInContainer() }
-    }
-
-    public static func decode(_ encodedValue: [Element.PropertyListValue]) throws -> Self {
-        do {
-            return try encodedValue.map { try Element.decode($0) }
-        }
-        catch {
-            throw PropertyListError<Self>.decode(error)
-        }
+        return try .init(JSONDecoder().decode(Value.self, from: data))
     }
 }
 
-extension Dictionary: PropertyListRepresentable where Key == String, Value: PropertyListRepresentable {
-    public func encode() -> [Key: Value.PropertyListValue] {
-        compactMapValues { $0.encodeInContainer() }
-    }
+// MARK: - PropertyListRepresentableAsJSON
 
-    public static func decode(_ encodedValue: [Key: Value.PropertyListValue]) throws -> Self {
-        do {
-            return try encodedValue.mapValues { try Value.decode($0) }
-        }
-        catch {
-            throw PropertyListError<Self>.decode(error)
-        }
-    }
+public protocol PropertyListRepresentableAsJSON: PropertyListRepresentable where Self: Codable {
 }
 
-// MARK: - Using PropertyListRepresentable
-
-extension PropertyListDict {
-    public func get<T: PropertyListRepresentable>(_ key: String) throws -> T {
-        guard let index = index(forKey: key) else {
-            throw PropertyListError<T>.missingProperty(key: key)
-        }
-
-        let dictValue = self[index].value
-        guard let encoded = dictValue as? T.PropertyListValue else {
-            throw PropertyListError.invalidType(expected: T.PropertyListValue.self, key: key, value: dictValue)
-        }
-
-        do {
-            return try T.decode(encoded)
-        }
-        catch {
-            throw PropertyListError<T>.invalidValue(key: key, value: dictValue, error: error)
-        }
+extension PropertyListRepresentableAsJSON {
+    public func encode() -> String {
+        JSONRawValue(self).encode()
     }
 
-    public func get<T: PropertyListRepresentable & AnyOptional>(_ key: String) throws -> T? {
-        guard let index = index(forKey: key) else {
-            return nil
-        }
-
-        let dictValue = self[index].value
-        guard let encoded = dictValue as? T.PropertyListValue else {
-            throw PropertyListError.invalidType(expected: T.PropertyListValue.self, key: key, value: dictValue)
-        }
-
-        do {
-            return try T.decode(encoded)
-        }
-        catch {
-            throw PropertyListError<T>.invalidValue(key: key, value: dictValue, error: error)
-        }
-    }
-
-    public func get<T: AnyPropertyList>(_ key: String) throws -> T {
-        guard let index = index(forKey: key) else {
-            throw PropertyListError<T>.missingProperty(key: key)
-        }
-
-        let dictValue = self[index].value
-        guard let res = dictValue as? T else {
-            throw PropertyListError.invalidType(expected: T.self, key: key, value: dictValue)
-        }
-
-        return res
-    }
-
-    public func get<T: AnyPropertyList & AnyOptional>(_ key: String) throws -> T? {
-        guard let index = index(forKey: key) else {
-            return nil
-        }
-
-        let dictValue = self[index].value
-        guard let res = dictValue as? T else {
-            throw PropertyListError.invalidType(expected: T.self, key: key, value: dictValue)
-        }
-
-        return res
-    }
-
-    public mutating func set<T: PropertyListRepresentable>(_ value: T, forKey key: String) {
-        guard let encoded = value.encodeInContainer() else { return }
-        self[key] = encoded
-    }
-
-    public mutating func set<T: AnyPropertyList>(_ value: T, forKey key: String) {
-        self[key] = value
+    public static func decode(_ value: String) throws -> Self {
+        try JSONRawValue.decode(value).value
     }
 }

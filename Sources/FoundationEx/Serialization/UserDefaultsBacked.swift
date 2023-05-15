@@ -8,7 +8,34 @@
 
 import Foundation
 
-// MARK: - UserDefaults property wrappers
+@MainActor
+public protocol DefaultsStorage: AnyObject {
+    func object(forKey defaultName: String) -> Any?
+    func set( _ value: Any?, forKey defaultName: String)
+    func removeObject(forKey defaultName: String)
+}
+
+extension UserDefaults: DefaultsStorage {
+}
+
+@MainActor
+public class TestDefaultsStorage: DefaultsStorage {
+    private var storage: [String: Any] = [:]
+    
+    public init() {}
+    
+    public func object(forKey defaultName: String) -> Any? {
+        storage[defaultName]
+    }
+    
+    public func set( _ value: Any?, forKey defaultName: String) {
+        storage[defaultName] = value
+    }
+    
+    public func removeObject(forKey defaultName: String) {
+        storage.removeValue(forKey: defaultName)
+    }
+}
 
 public protocol AnyOptional {
     var isNil: Bool { get }
@@ -18,7 +45,7 @@ extension Optional: AnyOptional {
     public var isNil: Bool { self == nil }
 }
 
-extension UserDefaults {
+extension DefaultsStorage {
     public func maybeSet<T: PropertyListRepresentable>(_ value: T, forKey key: String)  {
         if let optional = value as? AnyOptional, optional.isNil {
             removeObject(forKey: key)
@@ -29,12 +56,12 @@ extension UserDefaults {
     }
 }
 
-@propertyWrapper public struct UserDefaultsBacked<Value: PropertyListRepresentable> {
+@propertyWrapper
+@MainActor
+public struct UserDefaultsBacked<Value: PropertyListRepresentable> {
     public let key: String
-    public let requireMainThread: Bool
-    public var storage: UserDefaults
+    public var storage: DefaultsStorage
     public let defaultValue: Value
-    public var lastValue: Value!
 
     var storedValue: Value {
         guard let anyValue = storage.object(forKey: key) else {
@@ -44,42 +71,21 @@ extension UserDefaults {
             assertionFailure()
             return defaultValue
         }
-        return maybe(FoundationEx.env.logCodingError) { try Value.decode(encoded) } ?? defaultValue
+        return (try? Value.decode(encoded)) ?? defaultValue
     }
 
-    public init(
-        key: String,
-        requireMainThread: Bool = true,
-        storage: UserDefaults = FoundationEx.env.userDefaults,
-        defaultValue: Value
-    ) {
+    public init(key: String, storage: DefaultsStorage, defaultValue: Value) {
         self.key = key
-        self.requireMainThread = requireMainThread
         self.storage = storage
         self.defaultValue = defaultValue
-        lastValue = requireMainThread ? storedValue : defaultValue
     }
 
     public var wrappedValue: Value {
         get {
-            requireMainThread ? lastValue : storedValue
+            storedValue
         }
         set {
-            if requireMainThread {
-                assert(Thread.isMainThread)
-                lastValue = newValue
-            }
             storage.maybeSet(newValue, forKey: key)
         }
-    }
-}
-
-public extension UserDefaultsBacked {
-    init<T>(key: String, requireMainThread: Bool = true) where T? == Value {
-        self = .init(key: key, requireMainThread: requireMainThread, defaultValue: nil)
-    }
-
-    init<T>(key: String, requireMainThread: Bool = true) where [T] == Value {
-        self = .init(key: key, requireMainThread: requireMainThread, defaultValue: [])
     }
 }

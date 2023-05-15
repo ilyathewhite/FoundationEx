@@ -23,6 +23,7 @@ public extension JSONSerialization {
 }
 
 public struct JSONRawValue<T: Codable>: RawRepresentable {
+    public typealias Value = T
     public let value: T
     
     public init(_ value: T) {
