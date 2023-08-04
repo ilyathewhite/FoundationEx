@@ -86,6 +86,15 @@ extension JSONRawValue: PropertyListRepresentable {
     }
 }
 
+extension Optional: PropertyListRepresentable where Wrapped: PropertyListRepresentable {
+    public func encode() -> Wrapped.PropertyListValue? {
+        self.map { $0.encode() }
+    }
+    public static func decode(_ encodedValue: Wrapped.PropertyListValue?) throws -> Self {
+        try encodedValue.map { try Wrapped.decode($0) }
+    }
+}
+
 // MARK: - PropertyListRepresentableAsJSON
 
 public protocol PropertyListRepresentableAsJSON: PropertyListRepresentable where Self: Codable {
