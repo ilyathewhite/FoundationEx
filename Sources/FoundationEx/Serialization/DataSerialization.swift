@@ -46,6 +46,16 @@ extension Date: PropertyListRepresentableAsSelf {}
 
 // MARK: - PropertyListRepresentable for basic types that require some conversion
 
+extension Array: PropertyListRepresentable where Element: PropertyListRepresentable {
+    public func encode() -> Array<Element.PropertyListValue> {
+        self.map { $0.encode() }
+    }
+    
+    public static func decode(_ plistValue: Array<Element.PropertyListValue>) throws -> Self {
+        try plistValue.map { try Element.decode($0) }
+    }
+}
+
 extension URL: PropertyListRepresentable {
     public func encode() -> String {
         absoluteString
