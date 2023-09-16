@@ -6,7 +6,8 @@
 
 import Foundation
 
-public actor TaskManager {
+@MainActor
+public class TaskManager {
     private typealias ActionTask = Task<Void, Never>
 
     private enum TaskBox {
@@ -38,12 +39,18 @@ public actor TaskManager {
         tasks.removeValue(forKey: id)
     }
     
+    public func cancelAllTasks() {
+        for (_, box) in tasks {
+            box.cancelTask()
+        }
+    }
+    
     public func addTask(_ f: @escaping () async -> Void) {
         let id = UUID()
         tasks[id] = .willStart
         let task = Task { [weak self] in
             await f()
-            await self?.removeTask(id: id)
+            self?.removeTask(id: id)
         }
         
         if (self.tasks[id] != nil) && !task.isCancelled {
