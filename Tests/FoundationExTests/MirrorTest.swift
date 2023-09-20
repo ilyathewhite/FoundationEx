@@ -91,15 +91,19 @@ class CodeStringTests: XCTestCase {
         
         let value1: Simple2 = .one
         XCTAssertEqual(codeString(value1), ".one")
+        XCTAssertEqual(caseName(value1), "one")
         
         let value2: Simple2 = .two("text")
         XCTAssertEqual(codeString(value2), ".two(\"text\")")
-        
+        XCTAssertEqual(caseName(value2), "two")
+
         let value3: Simple2 = .three(text: "hello")
         XCTAssertEqual(codeString(value3), ".three(text: \"hello\")")
-        
+        XCTAssertEqual(caseName(value3), "three")
+
         let value4: Simple2 = .four(number: 57)
         XCTAssertEqual(codeString(value4), ".four(number: 57)")
+        XCTAssertEqual(caseName(value4), "four")
     }
     
     func testStruct() {

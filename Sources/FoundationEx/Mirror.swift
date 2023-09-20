@@ -8,6 +8,22 @@ import Foundation
 
 public let codeStringDefaultMaxWidth = 50
 
+public func caseName<T>(_ value: T) -> String {
+    let mirror = Mirror(reflecting: value)
+    switch mirror.displayStyle {
+    case .enum:
+        if let (caseLabel, _) = mirror.children.first {
+            return caseLabel ?? ""
+        }
+        else {
+            return "\(value)"
+        }
+
+    default:
+        return ""
+    }
+}
+
 public struct CodePropertyValuePair: Equatable, Codable, Identifiable {
     public let property: String
     public let value: String
