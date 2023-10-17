@@ -8,7 +8,6 @@
 
 import Foundation
 
-@MainActor
 public protocol DefaultsStorage: AnyObject {
     func object(forKey defaultName: String) -> Any?
     func set( _ value: Any?, forKey defaultName: String)
@@ -18,7 +17,6 @@ public protocol DefaultsStorage: AnyObject {
 extension UserDefaults: DefaultsStorage {
 }
 
-@MainActor
 public class TestDefaultsStorage: DefaultsStorage {
     private var storage: [String: Any] = [:]
     
@@ -57,7 +55,6 @@ extension DefaultsStorage {
 }
 
 @propertyWrapper
-@MainActor
 public struct UserDefaultsBacked<Value: PropertyListRepresentable> {
     public let key: String
     public var storage: DefaultsStorage
