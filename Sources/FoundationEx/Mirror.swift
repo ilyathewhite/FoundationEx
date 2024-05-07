@@ -8,6 +8,10 @@ import Foundation
 
 public let codeStringDefaultMaxWidth = 50
 
+public protocol CustomCodeStringConvertible {
+    func codeStringDescription(offset: Int, indent: Int, maxValueWidth: Int) -> String
+}
+
 public func caseName<T>(_ value: T) -> String {
     let mirror = Mirror(reflecting: value)
     switch mirror.displayStyle {
@@ -71,6 +75,10 @@ private func codeStringImpl<T>(_ value: T, delimiter: Character, offset: Int, in
     let mirror = Mirror(reflecting: value)
 
     if mirror.displayStyle != .optional {
+        if let value = value as? CustomCodeStringConvertible {
+            return value.codeStringDescription(offset: offset, indent: indent, maxValueWidth: maxValueWidth)
+        }
+        
         if value is any ExpressibleByBooleanLiteral {
             return String(describing: value)
         }
