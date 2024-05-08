@@ -66,6 +66,66 @@ public func singleLineCodeString<T>(_ value: T, indent: Int = 3, maxValueWidth: 
     codeStringImpl(value, delimiter: " ", offset: 0, indent: indent, maxValueWidth: maxValueWidth)
 }
 
+public func singleLineCodeString(name: String, properties: [String: Any]) -> String {
+    var res = name
+    res.append("(")
+    var count = 0
+    for (name, value) in properties.sorted(by: { $0.key < $1.key}) {
+        res.append(name)
+        res.append(": ")
+        res.append(singleLineCodeString(value))
+        count += 1
+        if count < properties.count {
+            res.append(", ")
+        }
+    }
+    res.append(")")
+    return res
+}
+
+public func codeString(
+    name: String,
+    properties: [String: Any],
+    offset: Int = 0,
+    indent: Int = 3,
+    maxValueWidth: Int = codeStringDefaultMaxWidth
+)
+-> String {
+    let singleLineValue = singleLineCodeString(name: name, properties: properties)
+    if singleLineValue.count < maxValueWidth {
+        return singleLineValue
+    }
+    
+    var res = name
+    if properties.isEmpty {
+        res.append("())")
+        return res
+    }
+    
+    func indentString(offset: Int) -> String {
+        String(repeating: " ", count: offset)
+    }
+
+    res.append("(\n")
+    var count = 0
+    for (name, value) in properties.sorted(by: { $0.key < $1.key}) {
+        res.append(indentString(offset: offset + indent))
+        res.append(name)
+        res.append(": ")
+        res.append(codeString(value, offset: offset + indent, indent: indent, maxValueWidth: maxValueWidth))
+        count += 1
+        if count < properties.count {
+            res.append(",\n")
+        }
+        else {
+            res.append("\n")
+        }
+    }
+    res.append(indentString(offset: offset))
+    res.append(")")
+    return res
+}
+
 public func codeString<T>(_ value: T, offset: Int = 0, indent: Int = 3, maxValueWidth: Int = codeStringDefaultMaxWidth) -> String {
     codeStringImpl(value, delimiter: "\n", offset: offset, indent: indent, maxValueWidth: maxValueWidth)
 }

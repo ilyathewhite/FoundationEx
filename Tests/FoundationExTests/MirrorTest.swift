@@ -543,4 +543,95 @@ class CodeStringTests: XCTestCase {
          ]
         XCTAssertEqual(content, expected)
     }
+    
+    func testCodeStringFromProperties() {
+        struct Simple {
+            let intValue: Int
+            let doubleValue: Double
+            let stringValue: String
+        }
+
+        let value = codeString(
+            name: "MyStruct",
+            properties: ["a": 1, "b": 2, "c": Simple(intValue: 1, doubleValue: 2.5, stringValue: "abc")]
+        )
+        
+        let expected = """
+        MyStruct(
+           a: 1,
+           b: 2,
+           c: Simple(
+              intValue: 1, doubleValue: 2.5, stringValue: "abc"
+           )
+        )
+        """
+        XCTAssertEqual(value, expected)
+    }
+    
+    func testCodeStringFromProperties2() {
+        struct Simple {
+            let x: Int
+            let y: Double
+            let z: String
+        }
+
+        let value = codeString(
+            name: "MyStruct",
+            properties: ["a": 1, "b": 2, "c": Simple(x: 1, y: 2.5, z: "abc")],
+            maxValueWidth: .max
+        )
+        
+        let expected = """
+        MyStruct(a: 1, b: 2, c: Simple(x: 1, y: 2.5, z: "abc"))
+        """
+        XCTAssertEqual(value, expected)
+    }
+
+    func testCodeStringFromProperties3() {
+        struct Simple {
+            let intValue: Int
+            let doubleValue: Double
+            let stringValue: String
+        }
+        
+        struct Pair {
+            let left: Simple
+            let right: Simple
+        }
+
+        let value = codeString(
+            name: "MyStruct",
+            properties: [
+                "a": 1, 
+                "b": Pair(
+                    left: Simple(
+                        intValue: 1, doubleValue: 2.7, stringValue: "3.14"
+                    ),
+                    right: Simple(
+                        intValue: 5, doubleValue: 121.9, stringValue: "hello"
+                    )
+                ),
+                "c": 3
+            ]
+        )
+        
+        let expected = """
+        MyStruct(
+           a: 1,
+           b: Pair(
+              left: Simple(
+                 intValue: 1, doubleValue: 2.7, stringValue: "3.14"
+              ),
+              right: Simple(
+                 intValue: 5,
+                 doubleValue: 121.9,
+                 stringValue: "hello"
+              )
+           ),
+           c: 3
+        )
+        """
+        XCTAssertEqual(value, expected)
+    }
+
 }
