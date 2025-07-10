@@ -5,16 +5,16 @@
 //  Created by Ilya Belenkiy on 6/12/25.
 //
 
-actor AsyncSemaphore {
+public actor AsyncSemaphore {
     let maxCount: Int
     private var count: Int = 0
     private var continuations: Array<CheckedContinuation<Void, Never>> = []
     
-    init(maxCount: Int) {
+    public init(maxCount: Int) {
         self.maxCount = maxCount
     }
     
-    func aquire() async {
+    public func aquire() async {
         if count < maxCount {
             count += 1
         }
@@ -26,7 +26,7 @@ actor AsyncSemaphore {
         }
     }
     
-    func release() {
+    public func release() {
         count -= 1
         if !continuations.isEmpty {
             let continuation = continuations.removeFirst()
