@@ -25,18 +25,14 @@ public class TaskManager {
     }
 
     private var tasks: [UUID: TaskBox] = [:]
-    
+    private var inFlightTaskIDs: [String: UUID] = [:]
+
     public init() {}
     
     deinit {
         for (_, box) in tasks {
             box.cancelTask()
         }
-        tasks.removeAll()
-    }
-    
-    private func removeTask(id: UUID) {
-        tasks.removeValue(forKey: id)
     }
     
     public func cancelAllTasks() {
@@ -45,16 +41,35 @@ public class TaskManager {
         }
     }
     
-    public func addTask(_ f: @escaping () async -> Void) {
+    public func addTask(cancellingPreviousWithKey key: String? = nil, _ f: @escaping () async -> Void) {
+        if let key, let id = inFlightTaskIDs[key], case let .inProgress(task) = tasks[id] {
+            task.cancel()
+        }
+
         let id = UUID()
         tasks[id] = .willStart
-        let task = Task { [weak self] in
+        if let key {
+            inFlightTaskIDs[key] = id
+        }
+
+        // The annotation below ensures that the task runs on the main actor across
+        // Swift versions. Prior to Swift 6, Task initializers didn't inherit the
+        // surrounding actor isolation.
+        let task = Task { @MainActor [weak self] in
+            // Exit early if this task is no longer current for the key.
+            if let key, self?.inFlightTaskIDs[key] != id { return }
+
             await f()
-            self?.removeTask(id: id)
+            guard let self else { return }
+            tasks.removeValue(forKey: id)
+            if let key, inFlightTaskIDs[key] == id {
+                inFlightTaskIDs.removeValue(forKey: key)
+            }
         }
         
-        if (self.tasks[id] != nil) && !task.isCancelled {
-            self.tasks[id] = .inProgress(task)
+        if (tasks[id] != nil) && !task.isCancelled {
+            tasks[id] = .inProgress(task)
         }
     }
 }
+
