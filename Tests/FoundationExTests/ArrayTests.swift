@@ -5,41 +5,48 @@
 //
 
 import Foundation
-import XCTest
+import Testing
 import FoundationEx
 
-class ArrayTests: XCTestCase {
-    func testMedian1() {
+@Suite
+struct ArrayTests {
+    @Test
+    func median1() {
         let array: [Double] = []
         let median = array.median()
-        XCTAssertEqual(median, nil)
+        #expect(median == nil)
     }
 
-    func testMedian2() {
+    @Test
+    func median2() {
         let array: [Double] = [7]
         let median = array.median()
-        XCTAssertEqual(median, 7)
+        #expect(median == 7)
     }
 
-    func testMedian3() {
+    @Test
+    func median3() {
         let array: [Double] = [7, 3]
         let median = array.median()
-        XCTAssertEqual(median, 5)
+        #expect(median == 5)
     }
 
-    func testMedian4() {
+    @Test
+    func median4() {
         let array: [Double] = [1, 2, 5, 25]
         let median = array.median()
-        XCTAssertEqual(median, 3.5)
+        #expect(median == 3.5)
     }
 
-    func testMedian5() {
+    @Test
+    func median5() {
         let array: [Double] = [1, 2, 5, 25, 49]
         let median = array.median()
-        XCTAssertEqual(median, 5)
+        #expect(median == 5)
     }
 
-    func testConcurrentMapPreservesOrder() async {
+    @Test
+    func concurrentMapPreservesOrder() async {
         let values = [1, 2, 3, 4, 5]
 
         let result = await values.concurrentMap { value in
@@ -48,13 +55,14 @@ class ArrayTests: XCTestCase {
             return value * value
         }
 
-        XCTAssertEqual(result, [1, 4, 9, 16, 25])
+        #expect(result == [1, 4, 9, 16, 25])
     }
 
-    func testConcurrentMapWithEmptyArray() async {
+    @Test
+    func concurrentMapWithEmptyArray() async {
         let result = await [Int]().concurrentMap { value in
             value * value
         }
-        XCTAssertEqual(result, [])
+        #expect(result == [])
     }
 }
