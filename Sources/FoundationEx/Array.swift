@@ -7,6 +7,25 @@
 
 import Foundation
 
+public extension Array {
+    func concurrentMap<T>(_ transform: @escaping (Element) async -> T) async -> [T] {
+        await withTaskGroup(of: (Int, T).self) { group in
+            for (index, element) in enumerated() {
+                group.addTask {
+                    (index, await transform(element))
+                }
+            }
+
+            var valuesByIndex = [Int: T]()
+            for await (index, value) in group {
+                valuesByIndex[index] = value
+            }
+
+            return (0..<count).compactMap { valuesByIndex[$0] }
+        }
+    }
+}
+
 public extension Array where Element: Hashable {
     func uniqueElements() -> Self {
         var elementSet = Set<Element>()
