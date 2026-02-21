@@ -40,8 +40,9 @@ public class TaskManager {
             box.cancelTask()
         }
     }
-    
-    public func addTask(cancellingPreviousWithKey key: String? = nil, _ f: @escaping () async -> Void) {
+
+    @discardableResult
+    public func addTask(cancellingPreviousWithKey key: String? = nil, _ f: @escaping () async -> Void) -> Task<Void, Never> {
         if let key, let id = inFlightTaskIDs[key], case let .inProgress(task) = tasks[id] {
             task.cancel()
         }
@@ -70,6 +71,8 @@ public class TaskManager {
         if (tasks[id] != nil) && !task.isCancelled {
             tasks[id] = .inProgress(task)
         }
+
+        return task
     }
 }
 
