@@ -5,6 +5,9 @@
 //
 
 import Foundation
+#if canImport(Combine)
+import Combine
+#endif
 import Testing
 import FoundationEx
 
@@ -545,6 +548,64 @@ struct CodeStringTests {
         )
         """
         #expect(codeString(value, maxValueWidth: 60) == strWidth60)
+    }
+
+    @Test
+    func maxNestingLevelStopsDeepRecursion() {
+        final class Box {
+            let level: Int
+            var next: Box?
+
+            init(level: Int, next: Box? = nil) {
+                self.level = level
+                self.next = next
+            }
+        }
+
+        let value = Box(
+            level: 0,
+            next: Box(
+                level: 1,
+                next: Box(
+                    level: 2,
+                    next: Box(level: 3)
+                )
+            )
+        )
+
+        #expect(
+            codeString(value, maxValueWidth: .max, maxNestingLevel: 2)
+            == "Box(level: 0, next: Box(level: 1, next: Box(level: 2, next: Box(...))))"
+        )
+    }
+
+    @Test
+    func circularClassReferenceStopsRecursion() {
+        final class Node {
+            let name: String
+            var next: Node?
+
+            init(name: String, next: Node? = nil) {
+                self.name = name
+                self.next = next
+            }
+        }
+
+        let value = Node(name: "root")
+        value.next = value
+
+        #expect(
+            codeString(value, maxValueWidth: .max)
+            == "Node(name: \"root\", next: <circular: Node>)"
+        )
+    }
+
+    @Test
+    func publisherIsATerminalNode() {
+        #if canImport(Combine)
+        let publisher = Just(1)
+        #expect(codeString(publisher, maxValueWidth: .max) == String(describing: publisher))
+        #endif
     }
     
     @Test

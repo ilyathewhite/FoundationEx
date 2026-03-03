@@ -5,8 +5,20 @@
 //
 
 import Foundation
+#if canImport(Combine)
+import Combine
+#endif
+#if canImport(QuartzCore)
+import QuartzCore
+#endif
+#if canImport(UIKit)
+import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
 
 public let codeStringDefaultMaxWidth = 50
+public let codeStringDefaultMaxNestingLevel = 8
 
 public protocol CustomCodeStringConvertible {
     func codeStringDescription(offset: Int, indent: Int, maxValueWidth: Int) -> String
@@ -42,7 +54,43 @@ public struct CodePropertyValuePair: Equatable, Codable, Identifiable {
     }
 }
 
-public func propertyCodeStrings<T>(_ value: T,  maxValueWidth: Int = codeStringDefaultMaxWidth) -> [CodePropertyValuePair] {
+private struct CodeStringContext {
+    let nestingLevel: Int
+    let maxNestingLevel: Int
+    let ancestorObjectIDs: Set<ObjectIdentifier>
+
+    static func root(maxNestingLevel: Int) -> Self {
+        .init(
+            nestingLevel: 0,
+            maxNestingLevel: max(0, maxNestingLevel),
+            ancestorObjectIDs: []
+        )
+    }
+
+    func descended() -> Self {
+        .init(
+            nestingLevel: nestingLevel + 1,
+            maxNestingLevel: maxNestingLevel,
+            ancestorObjectIDs: ancestorObjectIDs
+        )
+    }
+
+    func addingObjectID(_ objectID: ObjectIdentifier) -> Self {
+        var ancestorObjectIDs = ancestorObjectIDs
+        ancestorObjectIDs.insert(objectID)
+        return .init(
+            nestingLevel: nestingLevel,
+            maxNestingLevel: maxNestingLevel,
+            ancestorObjectIDs: ancestorObjectIDs
+        )
+    }
+}
+
+public func propertyCodeStrings<T>(
+    _ value: T,
+    maxValueWidth: Int = codeStringDefaultMaxWidth,
+    maxNestingLevel: Int = codeStringDefaultMaxNestingLevel
+) -> [CodePropertyValuePair] {
     let mirror = Mirror(reflecting: value)
     var res: [CodePropertyValuePair] = []
     switch mirror.displayStyle {
@@ -52,7 +100,11 @@ public func propertyCodeStrings<T>(_ value: T,  maxValueWidth: Int = codeStringD
                 assertionFailure()
                 continue
             }
-            let strValue = (value as? String) ?? codeString(value, maxValueWidth: maxValueWidth)
+            let strValue = (value as? String) ?? codeString(
+                value,
+                maxValueWidth: maxValueWidth,
+                maxNestingLevel: maxNestingLevel
+            )
             res.append(.init(property: propertyName, value: strValue))
         }
         return res
@@ -62,18 +114,34 @@ public func propertyCodeStrings<T>(_ value: T,  maxValueWidth: Int = codeStringD
     }
 }
 
-public func singleLineCodeString<T>(_ value: T, indent: Int = 3, maxValueWidth: Int = codeStringDefaultMaxWidth) -> String {
-    codeStringImpl(value, delimiter: " ", offset: 0, indent: indent, maxValueWidth: maxValueWidth)
+public func singleLineCodeString<T>(
+    _ value: T,
+    indent: Int = 3,
+    maxValueWidth: Int = codeStringDefaultMaxWidth,
+    maxNestingLevel: Int = codeStringDefaultMaxNestingLevel
+) -> String {
+    codeStringImpl(
+        value,
+        delimiter: " ",
+        offset: 0,
+        indent: indent,
+        maxValueWidth: maxValueWidth,
+        context: .root(maxNestingLevel: maxNestingLevel)
+    )
 }
 
-public func singleLineCodeString(name: String, properties: [String: Any]) -> String {
+public func singleLineCodeString(
+    name: String,
+    properties: [String: Any],
+    maxNestingLevel: Int = codeStringDefaultMaxNestingLevel
+) -> String {
     var res = name
     res.append("(")
     var count = 0
     for (name, value) in properties.sorted(by: { $0.key < $1.key}) {
         res.append(name)
         res.append(": ")
-        res.append(singleLineCodeString(value))
+        res.append(singleLineCodeString(value, maxNestingLevel: maxNestingLevel))
         count += 1
         if count < properties.count {
             res.append(", ")
@@ -88,10 +156,15 @@ public func codeString(
     properties: [String: Any],
     offset: Int = 0,
     indent: Int = 3,
-    maxValueWidth: Int = codeStringDefaultMaxWidth
+    maxValueWidth: Int = codeStringDefaultMaxWidth,
+    maxNestingLevel: Int = codeStringDefaultMaxNestingLevel
 )
 -> String {
-    let singleLineValue = singleLineCodeString(name: name, properties: properties)
+    let singleLineValue = singleLineCodeString(
+        name: name,
+        properties: properties,
+        maxNestingLevel: maxNestingLevel
+    )
     if singleLineValue.count < maxValueWidth {
         return singleLineValue
     }
@@ -112,7 +185,13 @@ public func codeString(
         res.append(indentString(offset: offset + indent))
         res.append(name)
         res.append(": ")
-        res.append(codeString(value, offset: offset + indent, indent: indent, maxValueWidth: maxValueWidth))
+        res.append(codeString(
+            value,
+            offset: offset + indent,
+            indent: indent,
+            maxValueWidth: maxValueWidth,
+            maxNestingLevel: maxNestingLevel
+        ))
         count += 1
         if count < properties.count {
             res.append(",\n")
@@ -126,13 +205,34 @@ public func codeString(
     return res
 }
 
-public func codeString<T>(_ value: T, offset: Int = 0, indent: Int = 3, maxValueWidth: Int = codeStringDefaultMaxWidth) -> String {
-    codeStringImpl(value, delimiter: "\n", offset: offset, indent: indent, maxValueWidth: maxValueWidth)
+public func codeString<T>(
+    _ value: T,
+    offset: Int = 0,
+    indent: Int = 3,
+    maxValueWidth: Int = codeStringDefaultMaxWidth,
+    maxNestingLevel: Int = codeStringDefaultMaxNestingLevel
+) -> String {
+    codeStringImpl(
+        value,
+        delimiter: "\n",
+        offset: offset,
+        indent: indent,
+        maxValueWidth: maxValueWidth,
+        context: .root(maxNestingLevel: maxNestingLevel)
+    )
 }
 
-private func codeStringImpl<T>(_ value: T, delimiter: Character, offset: Int, indent: Int, maxValueWidth: Int) -> String {
+private func codeStringImpl<T>(
+    _ value: T,
+    delimiter: Character,
+    offset: Int,
+    indent: Int,
+    maxValueWidth: Int,
+    context: CodeStringContext
+) -> String {
     let forceSingleLine = (delimiter == " ")
     let mirror = Mirror(reflecting: value)
+    var context = context
 
     if mirror.displayStyle != .optional {
         if let value = value as? CustomCodeStringConvertible {
@@ -191,22 +291,78 @@ private func codeStringImpl<T>(_ value: T, delimiter: Character, offset: Int, in
             res.append("\"")
             return res
         }
+
+        if isTerminalCodeStringValue(value) {
+            return terminalCodeString(value, mirror: mirror)
+        }
     }
-    
-    func nestedCodeString<U>(_ value: U, offset: Int) -> String {
-        codeStringImpl(value, delimiter: delimiter, offset: offset, indent: indent, maxValueWidth: maxValueWidth)
+
+    if mirror.displayStyle == .optional {
+        if let (_, wrappedValue) = mirror.children.first {
+            return codeStringImpl(
+                wrappedValue,
+                delimiter: delimiter,
+                offset: offset,
+                indent: indent,
+                maxValueWidth: maxValueWidth,
+                context: context
+            )
+        }
+        else {
+            return "nil"
+        }
     }
-    
-    func indentString(offset: Int) -> String {
-        guard !forceSingleLine else { return "" }
-        return String(repeating: " ", count: offset)
-    }
-    
+
     if !forceSingleLine {
-        let singleLine = singleLineCodeString(value)
+        let singleLine = codeStringImpl(
+            value,
+            delimiter: " ",
+            offset: offset,
+            indent: indent,
+            maxValueWidth: maxValueWidth,
+            context: context
+        )
         if (singleLine.count <= maxValueWidth) || forceSingleLine {
             return singleLine
         }
+    }
+
+    if let objectID = objectIdentifier(for: value, mirror: mirror) {
+        guard !context.ancestorObjectIDs.contains(objectID) else {
+            return circularReferenceCodeString(mirror)
+        }
+        context = context.addingObjectID(objectID)
+    }
+
+    if context.nestingLevel > context.maxNestingLevel {
+        return truncatedCodeString(value, mirror: mirror)
+    }
+    
+    func nestedCodeString<U>(_ value: U, offset: Int) -> String {
+        codeStringImpl(
+            value,
+            delimiter: delimiter,
+            offset: offset,
+            indent: indent,
+            maxValueWidth: maxValueWidth,
+            context: context.descended()
+        )
+    }
+
+    func nestedSingleLineCodeString<U>(_ value: U, offset: Int) -> String {
+        codeStringImpl(
+            value,
+            delimiter: " ",
+            offset: offset,
+            indent: indent,
+            maxValueWidth: maxValueWidth,
+            context: context.descended()
+        )
+    }
+
+    func indentString(offset: Int) -> String {
+        guard !forceSingleLine else { return "" }
+        return String(repeating: " ", count: offset)
     }
     
     var res = ""
@@ -228,7 +384,7 @@ private func codeStringImpl<T>(_ value: T, delimiter: Character, offset: Int, in
                 assertionFailure()
                 return res
             }
-            var caseValueStr = singleLineCodeString(caseValue)
+            var caseValueStr = nestedSingleLineCodeString(caseValue, offset: offset + indent)
             if Mirror(reflecting: caseValue).displayStyle == .tuple {
                 caseValueStr = String(caseValueStr.dropFirst().dropLast()) // remove the extra ()
             }
@@ -328,14 +484,6 @@ private func codeStringImpl<T>(_ value: T, delimiter: Character, offset: Int, in
         }
         res.append(")")
         
-    case .optional:
-        if let (_, value) = mirror.children.first {
-            res.append(nestedCodeString(value, offset: offset))
-        }
-        else {
-            res.append("nil")
-        }
-        
     case .collection:
         res.append("[")
         if !forceSingleLine {
@@ -366,7 +514,7 @@ private func codeStringImpl<T>(_ value: T, delimiter: Character, offset: Int, in
         var valuesDict: [String: Any] = [:]
         for (label, value) in mirror.children {
             assert(label == nil)
-            valuesDict[singleLineCodeString(value)] = value
+            valuesDict[nestedSingleLineCodeString(value, offset: offset + indent)] = value
         }
         
         res.append("Set([")
@@ -406,7 +554,7 @@ private func codeStringImpl<T>(_ value: T, delimiter: Character, offset: Int, in
             var value: Any?
             for  (index, (_, tupleValue)) in valueMirror.children.enumerated() {
                 if index == 0 {
-                    key = singleLineCodeString(tupleValue)
+                    key = nestedSingleLineCodeString(tupleValue, offset: offset + indent)
                 }
                 else if index == 1 {
                     value = tupleValue
@@ -478,7 +626,7 @@ private func codeStringImpl<T>(_ value: T, delimiter: Character, offset: Int, in
                 }
                 nestedContent.append(propertyName)
                 nestedContent.append(": ")
-                nestedContent.append(singleLineCodeString(value))
+                nestedContent.append(nestedSingleLineCodeString(value, offset: nestedOffset))
                 
                 if nestedContent.count > maxValueWidth {
                     break
@@ -517,4 +665,82 @@ private func codeStringImpl<T>(_ value: T, delimiter: Character, offset: Int, in
 
 private func shortName(_ name: String) -> String {
     name.split(separator: ".").last.map { String($0) } ?? name
+}
+
+private func objectIdentifier<T>(for value: T, mirror: Mirror) -> ObjectIdentifier? {
+    guard mirror.displayStyle == .class, let object = value as AnyObject? else {
+        return nil
+    }
+    return ObjectIdentifier(object)
+}
+
+private func circularReferenceCodeString(_ mirror: Mirror) -> String {
+    "<circular: \(shortName("\(mirror.subjectType)"))>"
+}
+
+private func truncatedCodeString<T>(_ value: T, mirror: Mirror) -> String {
+    switch mirror.displayStyle {
+    case .tuple:
+        return "(...)"
+
+    case .collection:
+        return "[...]"
+
+    case .set:
+        return "Set([...])"
+
+    case .dictionary:
+        return "[...]"
+
+    case .enum:
+        if let caseLabel = mirror.children.first?.label {
+            return ".\(caseLabel)(...)"
+        }
+        else if value is CustomStringConvertible {
+            return codeString(String(describing: value))
+        }
+        else {
+            return ".\(value)"
+        }
+
+    default:
+        let name = shortName("\(mirror.subjectType)")
+        return "\(name)(...)"
+    }
+}
+
+private func terminalCodeString<T>(_ value: T, mirror: Mirror) -> String {
+    let description = String(describing: value)
+    guard !description.isEmpty else {
+        return shortName("\(mirror.subjectType)")
+    }
+    return description
+}
+
+private func isTerminalCodeStringValue<T>(_ value: T) -> Bool {
+    #if canImport(Combine)
+    if value is any Publisher {
+        return true
+    }
+    #endif
+
+    #if canImport(UIKit)
+    if value is UIView || value is UIViewController {
+        return true
+    }
+    #endif
+
+    #if canImport(AppKit)
+    if value is NSView || value is NSViewController {
+        return true
+    }
+    #endif
+
+    #if canImport(QuartzCore)
+    if value is CALayer {
+        return true
+    }
+    #endif
+
+    return false
 }
