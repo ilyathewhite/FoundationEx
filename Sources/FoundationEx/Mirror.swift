@@ -40,7 +40,7 @@ public func caseName<T>(_ value: T) -> String {
     }
 }
 
-public struct CodePropertyValuePair: Equatable, Codable, Identifiable {
+public struct CodePropertyValuePair: Equatable, Codable, Identifiable, Sendable {
     public let property: String
     public let value: String
     
