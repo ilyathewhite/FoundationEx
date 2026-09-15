@@ -9,10 +9,10 @@
 import Foundation
 
 public extension NSRange {
-    static var zero: NSRange = NSRange(location: 0, length: 0)
+    static let zero: NSRange = NSRange(location: 0, length: 0)
 }
 
-extension NSRange: Sequence {
+extension NSRange: @retroactive Sequence {
     public struct Iterator: IteratorProtocol {
         var range: NSRange
 

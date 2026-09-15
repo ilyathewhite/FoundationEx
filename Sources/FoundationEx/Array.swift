@@ -7,8 +7,8 @@
 
 import Foundation
 
-public extension Array {
-    func concurrentMap<T>(_ transform: @escaping (Element) async -> T) async -> [T] {
+public extension Array where Element: Sendable {
+    func concurrentMap<T: Sendable>(_ transform: @escaping @Sendable (Element) async -> T) async -> [T] {
         await withTaskGroup(of: (Int, T).self) { group in
             for (index, element) in enumerated() {
                 group.addTask {

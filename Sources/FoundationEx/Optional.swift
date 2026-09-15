@@ -7,7 +7,7 @@
 
 import Foundation
 
-extension Optional: Identifiable where Wrapped: Identifiable {
+extension Optional: @retroactive Identifiable where Wrapped: Identifiable {
     public var id: Wrapped.ID? {
         self?.id
     }

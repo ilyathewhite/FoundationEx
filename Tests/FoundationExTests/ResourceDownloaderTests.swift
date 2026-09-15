@@ -104,8 +104,10 @@ private func withRegisteredMockURLProtocol<T>(
     return try await operation()
 }
 
-private final class MockURLProtocol: URLProtocol {
-    struct MockResponse {
+// Instances add no mutable state. The loading task only reads URLProtocol's
+// request/client and delivers callbacks; shared bookkeeping is locked below.
+private final class MockURLProtocol: URLProtocol, @unchecked Sendable {
+    struct MockResponse: Sendable {
         let data: Data
         let statusCode: Int
         let error: Error?
@@ -119,37 +121,55 @@ private final class MockURLProtocol: URLProtocol {
         }
     }
 
-    private static let lock = NSLock()
-    private static var responses: [URL: MockResponse] = [:]
-    private static var requestCounts: [URL: Int] = [:]
-    private static var activeRequestCount = 0
-    private static var highestActiveRequestCount = 0
+    // URLProtocol callbacks run outside actor isolation. All shared mock state is
+    // private to this container and can only be accessed while holding its lock.
+    private final class LockedState: @unchecked Sendable {
+        struct Values {
+            var responses: [URL: MockResponse] = [:]
+            var requestCounts: [URL: Int] = [:]
+            var activeRequestCount = 0
+            var highestActiveRequestCount = 0
+        }
+
+        private let lock = NSLock()
+        private var values = Values()
+
+        func withLock<T: Sendable>(_ operation: (inout Values) -> T) -> T {
+            lock.lock()
+            defer {
+                lock.unlock()
+            }
+            return operation(&values)
+        }
+    }
+
+    private static let state = LockedState()
 
     static func reset(responses: [URL: MockResponse]) {
-        locked {
-            Self.responses = responses
-            requestCounts = [:]
-            activeRequestCount = 0
-            highestActiveRequestCount = 0
+        state.withLock { state in
+            state.responses = responses
+            state.requestCounts = [:]
+            state.activeRequestCount = 0
+            state.highestActiveRequestCount = 0
         }
     }
 
     static func requestCount(for url: URL) -> Int {
-        locked {
-            requestCounts[url, default: 0]
+        state.withLock { state in
+            state.requestCounts[url, default: 0]
         }
     }
 
     static func maxActiveRequestCount() -> Int {
-        locked {
-            highestActiveRequestCount
+        state.withLock { state in
+            state.highestActiveRequestCount
         }
     }
 
     override class func canInit(with request: URLRequest) -> Bool {
         guard let url = request.url else { return false }
-        return locked {
-            responses[url] != nil
+        return state.withLock { state in
+            state.responses[url] != nil
         }
     }
 
@@ -192,25 +212,17 @@ private final class MockURLProtocol: URLProtocol {
     override func stopLoading() {}
 
     private static func beginRequest(for url: URL) -> MockResponse {
-        locked {
-            requestCounts[url, default: 0] += 1
-            activeRequestCount += 1
-            highestActiveRequestCount = max(highestActiveRequestCount, activeRequestCount)
-            return responses[url] ?? MockResponse(data: Data(), error: URLError(.unsupportedURL))
+        state.withLock { state in
+            state.requestCounts[url, default: 0] += 1
+            state.activeRequestCount += 1
+            state.highestActiveRequestCount = max(state.highestActiveRequestCount, state.activeRequestCount)
+            return state.responses[url] ?? MockResponse(data: Data(), error: URLError(.unsupportedURL))
         }
     }
 
     private static func finishRequest() {
-        locked {
-            activeRequestCount -= 1
+        state.withLock { state in
+            state.activeRequestCount -= 1
         }
-    }
-
-    private static func locked<T>(_ operation: () -> T) -> T {
-        lock.lock()
-        defer {
-            lock.unlock()
-        }
-        return operation()
     }
 }

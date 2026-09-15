@@ -7,7 +7,7 @@
 
 import Foundation
 
-public actor ResourceDownloader<T> {
+public actor ResourceDownloader<T: Sendable> {
     enum DownloadError: Error {
         case download(Error)
     }
@@ -37,7 +37,7 @@ public actor ResourceDownloader<T> {
         }
     }
     
-    public func download(url: URL, process: @escaping (Data) async throws -> T) async throws -> T {
+    public func download(url: URL, process: @escaping @Sendable (Data) async throws -> T) async throws -> T {
         if let box = cache.object(forKey: url as NSURL) {
             return try await box.task.value
         }

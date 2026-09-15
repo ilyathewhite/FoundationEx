@@ -18,8 +18,8 @@ public protocol PropertyListRepresentable {
 }
 
 public enum PropertyListError<T>: Error {
-    case invalidType(expected: T.Type, key: String, value: Any)
-    case invalidValue(value: Any, error: Error?)
+    case invalidType(expected: T.Type, key: String, value: any Sendable)
+    case invalidValue(value: any Sendable, error: Error?)
     case decode(Error)
 }
 
