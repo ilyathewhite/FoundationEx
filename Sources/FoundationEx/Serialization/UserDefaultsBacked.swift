@@ -19,17 +19,17 @@ extension UserDefaults: DefaultsStorage {
 
 public class TestDefaultsStorage: DefaultsStorage {
     private var storage: [String: Any] = [:]
-    
+
     public init() {}
-    
+
     public func object(forKey defaultName: String) -> Any? {
         storage[defaultName]
     }
-    
+
     public func set( _ value: Any?, forKey defaultName: String) {
         storage[defaultName] = value
     }
-    
+
     public func removeObject(forKey defaultName: String) {
         storage.removeValue(forKey: defaultName)
     }

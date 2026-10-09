@@ -9,10 +9,7 @@ let package = Package(
         .macOS(.v11), .iOS(.v14), .tvOS(.v13)
     ],
     products: [
-        .library(
-            name: "FoundationEx",
-            targets: ["FoundationEx"]
-        )
+        .library(name: "FoundationEx", targets: ["FoundationEx"])
     ],
     dependencies: [
         .package(url: "https://github.com/pointfreeco/swift-tagged.git", from: "0.10.0")
@@ -30,10 +27,7 @@ let package = Package(
 //                ])
             ]
         ),
-        .testTarget(
-            name: "FoundationExTests",
-            dependencies: ["FoundationEx"]
-        ),
+        .testTarget(name: "FoundationExTests", dependencies: ["FoundationEx"]),
     ],
     swiftLanguageModes: [.v6]
 )

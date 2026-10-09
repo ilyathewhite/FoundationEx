@@ -26,7 +26,7 @@ extension NSRange: @retroactive Sequence {
             return value
         }
     }
-    
+
     public func makeIterator() -> Iterator {
         .init(range: self)
     }

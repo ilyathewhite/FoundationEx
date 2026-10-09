@@ -13,7 +13,7 @@ public class TaskManager {
     private enum TaskBox {
         case willStart
         case inProgress(ActionTask)
-        
+
         func cancelTask() {
             switch self {
             case .inProgress(let task):
@@ -28,13 +28,13 @@ public class TaskManager {
     private var inFlightTaskIDs: [String: UUID] = [:]
 
     public init() {}
-    
+
     deinit {
         for (_, box) in tasks {
             box.cancelTask()
         }
     }
-    
+
     public func cancelAllTasks() {
         for (_, box) in tasks {
             box.cancelTask()
@@ -42,7 +42,10 @@ public class TaskManager {
     }
 
     @discardableResult
-    public func addTask(cancellingPreviousWithKey key: String? = nil, _ f: @escaping () async -> Void) -> Task<Void, Never> {
+    public func addTask(
+        cancellingPreviousWithKey key: String? = nil,
+        _ f: @escaping () async -> Void
+    ) -> Task<Void, Never> {
         if let key, let id = inFlightTaskIDs[key], case let .inProgress(task) = tasks[id] {
             task.cancel()
         }
@@ -67,7 +70,7 @@ public class TaskManager {
                 inFlightTaskIDs.removeValue(forKey: key)
             }
         }
-        
+
         if (tasks[id] != nil) && !task.isCancelled {
             tasks[id] = .inProgress(task)
         }
@@ -75,4 +78,3 @@ public class TaskManager {
         return task
     }
 }
-

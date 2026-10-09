@@ -50,7 +50,7 @@ extension Array: PropertyListRepresentable where Element: PropertyListRepresenta
     public func encode() -> Array<Element.PropertyListValue> {
         self.map { $0.encode() }
     }
-    
+
     public static func decode(_ plistValue: Array<Element.PropertyListValue>) throws -> Self {
         try plistValue.map { try Element.decode($0) }
     }
@@ -66,9 +66,7 @@ extension URL: PropertyListRepresentable {
             return value
         }
         else {
-            throw PropertyListError<Self>.decode(
-                PropertyListError<Self>.invalidValue(value: plistValue, error: nil)
-            )
+            throw PropertyListError<Self>.decode(PropertyListError<Self>.invalidValue(value: plistValue, error: nil))
         }
     }
 }

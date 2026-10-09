@@ -43,11 +43,11 @@ public func caseName<T>(_ value: T) -> String {
 public struct CodePropertyValuePair: Equatable, Codable, Identifiable, Sendable {
     public let property: String
     public let value: String
-    
+
     public var id: String {
         property
     }
-    
+
     public init(property: String, value: String) {
         self.property = property
         self.value = value
@@ -60,19 +60,11 @@ private struct CodeStringContext {
     let ancestorObjectIDs: Set<ObjectIdentifier>
 
     static func root(maxNestingLevel: Int) -> Self {
-        .init(
-            nestingLevel: 0,
-            maxNestingLevel: max(0, maxNestingLevel),
-            ancestorObjectIDs: []
-        )
+        .init(nestingLevel: 0, maxNestingLevel: max(0, maxNestingLevel), ancestorObjectIDs: [])
     }
 
     func descended() -> Self {
-        .init(
-            nestingLevel: nestingLevel + 1,
-            maxNestingLevel: maxNestingLevel,
-            ancestorObjectIDs: ancestorObjectIDs
-        )
+        .init(nestingLevel: nestingLevel + 1, maxNestingLevel: maxNestingLevel, ancestorObjectIDs: ancestorObjectIDs)
     }
 
     func addingObjectID(_ objectID: ObjectIdentifier) -> Self {
@@ -108,7 +100,7 @@ public func propertyCodeStrings<T>(
             res.append(.init(property: propertyName, value: strValue))
         }
         return res
-        
+
     default:
         return []
     }
@@ -138,7 +130,7 @@ public func singleLineCodeString(
     var res = name
     res.append("(")
     var count = 0
-    for (name, value) in properties.sorted(by: { $0.key < $1.key}) {
+    for (name, value) in properties.sorted(by: { $0.key < $1.key }) {
         res.append(name)
         res.append(": ")
         res.append(singleLineCodeString(value, maxNestingLevel: maxNestingLevel))
@@ -160,28 +152,24 @@ public func codeString(
     maxNestingLevel: Int = codeStringDefaultMaxNestingLevel
 )
 -> String {
-    let singleLineValue = singleLineCodeString(
-        name: name,
-        properties: properties,
-        maxNestingLevel: maxNestingLevel
-    )
+    let singleLineValue = singleLineCodeString(name: name, properties: properties, maxNestingLevel: maxNestingLevel)
     if singleLineValue.count < maxValueWidth {
         return singleLineValue
     }
-    
+
     var res = name
     if properties.isEmpty {
         res.append("())")
         return res
     }
-    
+
     func indentString(offset: Int) -> String {
         String(repeating: " ", count: offset)
     }
 
     res.append("(\n")
     var count = 0
-    for (name, value) in properties.sorted(by: { $0.key < $1.key}) {
+    for (name, value) in properties.sorted(by: { $0.key < $1.key }) {
         res.append(indentString(offset: offset + indent))
         res.append(name)
         res.append(": ")
@@ -238,19 +226,19 @@ private func codeStringImpl<T>(
         if let value = value as? CustomCodeStringConvertible {
             return value.codeStringDescription(offset: offset, indent: indent, maxValueWidth: maxValueWidth)
         }
-        
+
         if value is any ExpressibleByBooleanLiteral {
             return String(describing: value)
         }
-        
+
         if value is any ExpressibleByIntegerLiteral {
             return String(describing: value)
         }
-        
+
         if value is any ExpressibleByFloatLiteral {
             return String(describing: value)
         }
-        
+
         if value is any ExpressibleByStringLiteral {
             let str = String(describing: value)
             var res = ""
@@ -337,7 +325,7 @@ private func codeStringImpl<T>(
     if context.nestingLevel > context.maxNestingLevel {
         return truncatedCodeString(value, mirror: mirror)
     }
-    
+
     func nestedCodeString<U>(_ value: U, offset: Int) -> String {
         codeStringImpl(
             value,
@@ -364,9 +352,9 @@ private func codeStringImpl<T>(
         guard !forceSingleLine else { return "" }
         return String(repeating: " ", count: offset)
     }
-    
+
     var res = ""
-    
+
     func addNestedContent(_ nestedContent: String) -> Bool {
         guard (nestedContent.count <= maxValueWidth) || forceSingleLine else { return false }
         res.append(indentString(offset: offset + indent))
@@ -376,7 +364,7 @@ private func codeStringImpl<T>(
         }
         return true
     }
-    
+
     switch mirror.displayStyle {
     case .enum:
         if let (caseLabel, caseValue) = mirror.children.first {
@@ -417,7 +405,7 @@ private func codeStringImpl<T>(
                             else {
                                 isFirst = false
                             }
-                            
+
                             res.append(nestedOffsetStr)
                             if let label, !label.starts(with: ".") {
                                 res.append(label)
@@ -428,11 +416,11 @@ private func codeStringImpl<T>(
                         res.append("\n")
                         res.append(indentString(offset: offset))
                         res.append(")")
-                        
+
                     case .collection, .set, .dictionary:
                         res.append(nestedCodeString(caseValue, offset: offset))
                         res.append(")")
-                        
+
                     default:
                         let nestedOffsetStr = indentString(offset: nestedOffset)
                         res.append("\n")
@@ -440,7 +428,7 @@ private func codeStringImpl<T>(
                         res.append(nestedCodeString(caseValue, offset: nestedOffset))
                         res.append("\n")
                         res.append(indentString(offset: offset))
-                        res.append(")")                        
+                        res.append(")")
                     }
                 }
             }
@@ -470,7 +458,7 @@ private func codeStringImpl<T>(
             else {
                 isFirst = false
             }
-            
+
             res.append(nestedOffsetStr)
             if let label, !label.starts(with: ".") {
                 res.append(label)
@@ -483,7 +471,7 @@ private func codeStringImpl<T>(
             res.append(indentString(offset: offset))
         }
         res.append(")")
-        
+
     case .collection:
         res.append("[")
         if !forceSingleLine {
@@ -499,7 +487,7 @@ private func codeStringImpl<T>(
             else {
                 isFirst = false
             }
-            
+
             assert(label == nil)
             res.append(nestedOffsetStr)
             res.append(nestedCodeString(value, offset: nestedOffset))
@@ -516,7 +504,7 @@ private func codeStringImpl<T>(
             assert(label == nil)
             valuesDict[nestedSingleLineCodeString(value, offset: offset + indent)] = value
         }
-        
+
         res.append("Set([")
         if !forceSingleLine {
             res.append("\n")
@@ -529,7 +517,7 @@ private func codeStringImpl<T>(
                 assertionFailure()
                 continue
             }
-            
+
             if !isFirst {
                 res.append(",\(delimiter)")
             }
@@ -566,7 +554,7 @@ private func codeStringImpl<T>(
             }
             dict[key] = value
         }
-        
+
         guard !dict.isEmpty else {
             return "[:]"
         }
@@ -627,14 +615,14 @@ private func codeStringImpl<T>(
                 nestedContent.append(propertyName)
                 nestedContent.append(": ")
                 nestedContent.append(nestedSingleLineCodeString(value, offset: nestedOffset))
-                
+
                 if nestedContent.count > maxValueWidth {
                     break
                 }
             }
             didAddAsOneLine = addNestedContent(nestedContent)
         }
-        
+
         if !didAddAsOneLine {
             let nestedOffsetStr = indentString(offset: nestedOffset)
             var isFirst = true
@@ -649,7 +637,7 @@ private func codeStringImpl<T>(
                 else {
                     isFirst = false
                 }
-                
+
                 res.append(nestedOffsetStr)
                 res.append(propertyName)
                 res.append(": ")
@@ -659,7 +647,7 @@ private func codeStringImpl<T>(
         }
         res.append(indentString(offset: offset))
         res.append(")")
-     }
+    }
     return res
 }
 

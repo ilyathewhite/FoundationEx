@@ -13,9 +13,7 @@ struct ResourceDownloaderTests {
     @Test
     func returnsCachedProcessedValueWithoutRepeatingRequest() async throws {
         let url = URL(string: "https://foundationex.test/cached")!
-        try await withRegisteredMockURLProtocol(responses: [
-            url: .init(data: Data("hello".utf8))
-        ]) {
+        try await withRegisteredMockURLProtocol(responses: [url: .init(data: Data("hello".utf8))]) {
             let downloader = ResourceDownloader<String>(maxConcurrentCount: 1)
 
             let first = try await downloader.download(url: url) { data in
@@ -70,9 +68,7 @@ struct ResourceDownloaderTests {
         }
 
         let url = URL(string: "https://foundationex.test/failure")!
-        try await withRegisteredMockURLProtocol(responses: [
-            url: .init(data: Data(), error: Failure.failed)
-        ]) {
+        try await withRegisteredMockURLProtocol(responses: [url: .init(data: Data(), error: Failure.failed)]) {
             let downloader = ResourceDownloader<String>(maxConcurrentCount: 1)
             var didThrow = false
 
