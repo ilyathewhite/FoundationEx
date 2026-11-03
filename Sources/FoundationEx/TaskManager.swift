@@ -60,15 +60,16 @@ public class TaskManager {
         // Swift versions. Prior to Swift 6, Task initializers didn't inherit the
         // surrounding actor isolation.
         let task = Task { @MainActor [weak self] in
+            defer {
+                self?.tasks.removeValue(forKey: id)
+                if let key, self?.inFlightTaskIDs[key] == id {
+                    self?.inFlightTaskIDs.removeValue(forKey: key)
+                }
+            }
             // Exit early if this task is no longer current for the key.
             if let key, self?.inFlightTaskIDs[key] != id { return }
 
             await f()
-            guard let self else { return }
-            tasks.removeValue(forKey: id)
-            if let key, inFlightTaskIDs[key] == id {
-                inFlightTaskIDs.removeValue(forKey: key)
-            }
         }
 
         if (tasks[id] != nil) && !task.isCancelled {

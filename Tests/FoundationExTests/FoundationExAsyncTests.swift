@@ -11,6 +11,31 @@ import FoundationEx
 @Suite
 struct FoundationExAsyncTests {
     @Test
+    @MainActor
+    func supersededTaskBurstsRemoveAllCompletedBookkeeping() async throws {
+        let manager = TaskManager()
+        var executed: [Int] = []
+        for burst in 0..<3 {
+            let tasks = (0..<1_000).map { index in
+                manager.addTask(cancellingPreviousWithKey: "search") { executed.append(index) }
+            }
+            for task in tasks { await task.value }
+            #expect(executed == Array(repeating: 999, count: burst + 1))
+            let entries = try #require(Mirror(reflecting: manager).children.first { $0.label == "tasks" })
+            #expect(Mirror(reflecting: entries.value).children.isEmpty)
+            let keys = try #require(Mirror(reflecting: manager).children.first { $0.label == "inFlightTaskIDs" })
+            #expect(Mirror(reflecting: keys.value).children.isEmpty)
+        }
+        let cancelled = manager.addTask(cancellingPreviousWithKey: "search") {}
+        manager.cancelAllTasks()
+        await cancelled.value
+        let unkeyed = manager.addTask {}
+        await unkeyed.value
+        let entries = try #require(Mirror(reflecting: manager).children.first { $0.label == "tasks" })
+        #expect(Mirror(reflecting: entries.value).children.isEmpty)
+    }
+
+    @Test
     func erasedAsyncSequenceYieldsValuesFromUnderlyingSequence() async throws {
         let stream = AsyncStream<Int> { continuation in
             continuation.yield(1)
